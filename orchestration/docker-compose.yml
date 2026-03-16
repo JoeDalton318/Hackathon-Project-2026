@@ -1,0 +1,204 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Base de données principale
+  postgres:
+    image: postgres:15-alpine
+    container_name: hackathon_postgres
+    environment:
+      POSTGRES_USER: hackathon_user
+      POSTGRES_PASSWORD: hackathon_pass
+      POSTGRES_DB: hackathon_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../data-architecture/init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - hackathon_network
+
+  # MinIO - Data Lake (compatible S3)
+  minio:
+    image: minio/minio:latest
+    container_name: hackathon_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio_admin
+      MINIO_ROOT_PASSWORD: minio_admin_pass
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - hackathon_network
+
+  # Redis - Message Broker pour Celery
+  redis:
+    image: redis:7-alpine
+    container_name: hackathon_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - hackathon_network
+
+  # Airflow Init - Initialisation de la base de données
+  airflow-init:
+    image: apache/airflow:2.8.1-python3.11
+    container_name: hackathon_airflow_init
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://hackathon_user:hackathon_pass@postgres/hackathon_db
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://hackathon_user:hackathon_pass@postgres/hackathon_db
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin || true
+        echo "Airflow initialization complete!"
+    networks:
+      - hackathon_network
+    restart: on-failure
+
+  # Airflow Webserver
+  airflow-webserver:
+    image: apache/airflow:2.8.1-python3.11
+    container_name: hackathon_airflow_webserver
+    depends_on:
+      - postgres
+      - redis
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://hackathon_user:hackathon_pass@postgres/hackathon_db
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://hackathon_user:hackathon_pass@postgres/hackathon_db
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ../nlp-ocr/scripts:/opt/airflow/nlp-ocr
+      - ../validation/scripts:/opt/airflow/validation
+    ports:
+      - "8080:8080"
+    command: webserver
+    networks:
+      - hackathon_network
+
+  # Airflow Scheduler
+  airflow-scheduler:
+    image: apache/airflow:2.8.1-python3.11
+    container_name: hackathon_airflow_scheduler
+    depends_on:
+      - postgres
+      - redis
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://hackathon_user:hackathon_pass@postgres/hackathon_db
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://hackathon_user:hackathon_pass@postgres/hackathon_db
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ../nlp-ocr/scripts:/opt/airflow/nlp-ocr
+      - ../validation/scripts:/opt/airflow/validation
+    command: scheduler
+    networks:
+      - hackathon_network
+
+  # Airflow Celery Worker
+  airflow-worker:
+    image: apache/airflow:2.8.1-python3.11
+    container_name: hackathon_airflow_worker
+    depends_on:
+      - postgres
+      - redis
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://hackathon_user:hackathon_pass@postgres/hackathon_db
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://hackathon_user:hackathon_pass@postgres/hackathon_db
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: ''
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ../nlp-ocr/scripts:/opt/airflow/nlp-ocr
+      - ../validation/scripts:/opt/airflow/validation
+    command: celery worker
+    networks:
+      - hackathon_network
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: hackathon_backend
+    depends_on:
+      - postgres
+      - minio
+    environment:
+      DATABASE_URL: postgresql://hackathon_user:hackathon_pass@postgres:5432/hackathon_db
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minio_admin
+      MINIO_SECRET_KEY: minio_admin_pass
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend/app:/app
+    networks:
+      - hackathon_network
+
+  # React Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: hackathon_frontend
+    depends_on:
+      - backend
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend/src:/app/src
+      - ../frontend/public:/app/public
+    networks:
+      - hackathon_network
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  hackathon_network:
+    driver: bridge

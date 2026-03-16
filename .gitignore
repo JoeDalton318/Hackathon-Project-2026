@@ -1,7 +1,47 @@
+# Python
 .venv
-.idea
-.vscode
 .env
-__pycache__
+__pycache__/
 *.pyc
 *.pyo
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+env/
+venv/
+
+# IDEs
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Airflow
+airflow/logs/*
+!airflow/logs/.gitkeep
+airflow/airflow.db
+airflow/airflow.cfg
+airflow/webserver_config.py
+
+# Node / React
+node_modules/
+npm-debug.log*
+react/build/
+.pnp
+.pnp.js
+
+# Docker
+*.log
+
+# Base de données
+*.db
+*.sqlite
+
+# MinIO
+minio_data/
