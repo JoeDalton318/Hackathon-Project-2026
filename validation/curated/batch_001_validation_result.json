@@ -1,0 +1,369 @@
+{
+  "batch_id": "batch_001",
+  "status": "completed",
+  "validated_at": "2026-03-17T12:00:00",
+  "engine_version": "1.1.0",
+  "global_score": 240,
+  "decision": "blocked",
+  "alerts": [
+    {
+      "rule_code": "TVA_INVALID",
+      "severity": "high",
+      "message": "Le numéro de TVA est invalide ou incohérent avec le SIREN.",
+      "documents": [
+        "doc_fact_001"
+      ],
+      "details": {
+        "tva_number": "FR99732829320",
+        "siren": "732829320"
+      }
+    },
+    {
+      "rule_code": "NONSTANDARD_VAT_RATE",
+      "severity": "medium",
+      "message": "Le taux de TVA apparent ne correspond pas à un taux standard attendu.",
+      "documents": [
+        "doc_fact_001"
+      ],
+      "details": {
+        "apparent_rate": -0.05,
+        "closest_standard_rate": 0.0
+      }
+    },
+    {
+      "rule_code": "VAT_NEGATIVE_AMOUNT",
+      "severity": "high",
+      "message": "Le montant de TVA est négatif, ce qui est incohérent pour ce document.",
+      "documents": [
+        "doc_fact_001"
+      ],
+      "details": {
+        "amount_ht": 1000.0,
+        "amount_tva": -50.0,
+        "amount_ttc": 950.0
+      }
+    },
+    {
+      "rule_code": "VAT_TTC_LT_HT",
+      "severity": "high",
+      "message": "Le montant TTC est inférieur au montant HT, ce qui est incohérent.",
+      "documents": [
+        "doc_fact_001"
+      ],
+      "details": {
+        "amount_ht": 1000.0,
+        "amount_tva": -50.0,
+        "amount_ttc": 950.0
+      }
+    },
+    {
+      "rule_code": "DATE_ECHEANCE_INCOHERENTE",
+      "severity": "medium",
+      "message": "La date d'échéance est antérieure à la date de facture.",
+      "documents": [
+        "doc_fact_001"
+      ],
+      "details": {
+        "date_facture": "2026-03-10",
+        "date_echeance": "2026-03-05"
+      }
+    },
+    {
+      "rule_code": "LOW_CONFIDENCE_CRITICAL_FIELD",
+      "severity": "low",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "documents": [
+        "doc_fact_001"
+      ],
+      "details": {
+        "champ": "numero_facture",
+        "confidence": 0.52,
+        "threshold": 0.6
+      }
+    },
+    {
+      "rule_code": "LOW_CONFIDENCE_CRITICAL_FIELD",
+      "severity": "low",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "documents": [
+        "doc_fact_001"
+      ],
+      "details": {
+        "champ": "date_facture",
+        "confidence": 0.57,
+        "threshold": 0.6
+      }
+    },
+    {
+      "rule_code": "LOW_CONFIDENCE_CRITICAL_FIELD",
+      "severity": "low",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "documents": [
+        "doc_fact_001"
+      ],
+      "details": {
+        "champ": "siret",
+        "confidence": 0.41,
+        "threshold": 0.6
+      }
+    },
+    {
+      "rule_code": "DOCUMENT_TOO_INCOMPLETE",
+      "severity": "high",
+      "message": "Le document est trop incomplet pour une validation fiable.",
+      "documents": [
+        "doc_fact_incomplete"
+      ],
+      "details": {
+        "doc_type": "facture",
+        "missing_fields": [
+          "numero_facture",
+          "date_facture",
+          "siret",
+          "tva_number"
+        ],
+        "missing_count": 4,
+        "threshold": 3
+      }
+    },
+    {
+      "rule_code": "SIRET_INVALID",
+      "severity": "high",
+      "message": "Le SIRET est invalide (regex, longueur ou checksum Luhn).",
+      "documents": [
+        "doc_att_001"
+      ],
+      "details": {
+        "champ": "document.siret",
+        "siret": "73282932000075"
+      }
+    },
+    {
+      "rule_code": "DATE_EXPIRATION_DEPASSEE",
+      "severity": "high",
+      "message": "La date d'expiration de l'attestation est dépassée.",
+      "documents": [
+        "doc_att_001"
+      ],
+      "details": {
+        "expiry_date": "2026-02-28",
+        "reference_date": "2026-03-17"
+      }
+    },
+    {
+      "rule_code": "LOW_CONFIDENCE_CRITICAL_FIELD",
+      "severity": "low",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "documents": [
+        "doc_att_001"
+      ],
+      "details": {
+        "champ": "siret",
+        "confidence": 0.41,
+        "threshold": 0.6
+      }
+    },
+    {
+      "rule_code": "LOW_CONFIDENCE_CRITICAL_FIELD",
+      "severity": "low",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "documents": [
+        "doc_att_001"
+      ],
+      "details": {
+        "champ": "date_expiration",
+        "confidence": 0.43,
+        "threshold": 0.6
+      }
+    },
+    {
+      "rule_code": "IBAN_INVALID",
+      "severity": "high",
+      "message": "Le format ou le checksum de l'IBAN est invalide.",
+      "documents": [
+        "doc_rib_001"
+      ],
+      "details": {
+        "iban": "FRXX30006000001123456789018"
+      }
+    },
+    {
+      "rule_code": "LOW_CONFIDENCE_CRITICAL_FIELD",
+      "severity": "low",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "documents": [
+        "doc_rib_001"
+      ],
+      "details": {
+        "champ": "iban",
+        "confidence": 0.39,
+        "threshold": 0.6
+      }
+    },
+    {
+      "rule_code": "LOW_CONFIDENCE_CRITICAL_FIELD",
+      "severity": "low",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "documents": [
+        "doc_rib_001"
+      ],
+      "details": {
+        "champ": "titulaire",
+        "confidence": 0.42,
+        "threshold": 0.6
+      }
+    },
+    {
+      "rule_code": "LOW_EXTRACTION_CONFIDENCE",
+      "severity": "medium",
+      "message": "Le score de confiance d'extraction est faible.",
+      "documents": [
+        "doc_fact_001"
+      ],
+      "details": {
+        "confidence": 0.42
+      }
+    }
+  ],
+  "signals": [
+    {
+      "code": "TVA_INCOHERENTE",
+      "message": "Le numéro de TVA est invalide ou incohérent avec le SIREN.",
+      "champ": null,
+      "valeur": "FR99732829320",
+      "document_id": "doc_fact_001"
+    },
+    {
+      "code": "TAUX_TVA_NON_STANDARD",
+      "message": "Le taux de TVA apparent ne correspond pas à un taux standard attendu.",
+      "champ": null,
+      "valeur": -0.05,
+      "document_id": "doc_fact_001"
+    },
+    {
+      "code": "TVA_NEGATIVE",
+      "message": "Le montant de TVA est négatif, ce qui est incohérent pour ce document.",
+      "champ": null,
+      "valeur": 950.0,
+      "document_id": "doc_fact_001"
+    },
+    {
+      "code": "TTC_INFERIEUR_HT",
+      "message": "Le montant TTC est inférieur au montant HT, ce qui est incohérent.",
+      "champ": null,
+      "valeur": 950.0,
+      "document_id": "doc_fact_001"
+    },
+    {
+      "code": "DATE_ECHEANCE_INCOHERENTE",
+      "message": "La date d'échéance est antérieure à la date de facture.",
+      "champ": null,
+      "valeur": null,
+      "document_id": "doc_fact_001"
+    },
+    {
+      "code": "FAIBLE_CONFIANCE_CHAMP_CRITIQUE",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "champ": "numero_facture",
+      "valeur": 0.52,
+      "document_id": "doc_fact_001"
+    },
+    {
+      "code": "FAIBLE_CONFIANCE_CHAMP_CRITIQUE",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "champ": "date_facture",
+      "valeur": 0.57,
+      "document_id": "doc_fact_001"
+    },
+    {
+      "code": "FAIBLE_CONFIANCE_CHAMP_CRITIQUE",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "champ": "siret",
+      "valeur": 0.41,
+      "document_id": "doc_fact_001"
+    },
+    {
+      "code": "DOCUMENT_TROP_INCOMPLET",
+      "message": "Le document est trop incomplet pour une validation fiable.",
+      "champ": null,
+      "valeur": null,
+      "document_id": "doc_fact_incomplete"
+    },
+    {
+      "code": "SIRET_INVALIDE_FORMAT",
+      "message": "Le SIRET est invalide (regex, longueur ou checksum Luhn).",
+      "champ": "document.siret",
+      "valeur": "73282932000075",
+      "document_id": "doc_att_001"
+    },
+    {
+      "code": "DATE_EXPIRATION_DEPASSEE",
+      "message": "La date d'expiration de l'attestation est dépassée.",
+      "champ": null,
+      "valeur": null,
+      "document_id": "doc_att_001"
+    },
+    {
+      "code": "FAIBLE_CONFIANCE_CHAMP_CRITIQUE",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "champ": "siret",
+      "valeur": 0.41,
+      "document_id": "doc_att_001"
+    },
+    {
+      "code": "FAIBLE_CONFIANCE_CHAMP_CRITIQUE",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "champ": "date_expiration",
+      "valeur": 0.43,
+      "document_id": "doc_att_001"
+    },
+    {
+      "code": "IBAN_INVALIDE",
+      "message": "Le format ou le checksum de l'IBAN est invalide.",
+      "champ": null,
+      "valeur": "FRXX30006000001123456789018",
+      "document_id": "doc_rib_001"
+    },
+    {
+      "code": "FAIBLE_CONFIANCE_CHAMP_CRITIQUE",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "champ": "iban",
+      "valeur": 0.39,
+      "document_id": "doc_rib_001"
+    },
+    {
+      "code": "FAIBLE_CONFIANCE_CHAMP_CRITIQUE",
+      "message": "Champ critique extrait avec une confiance OCR faible.",
+      "champ": "titulaire",
+      "valeur": 0.42,
+      "document_id": "doc_rib_001"
+    },
+    {
+      "code": "FAIBLE_CONFIANCE_EXTRACTION",
+      "message": "Le score de confiance d'extraction est faible.",
+      "champ": null,
+      "valeur": 0.42,
+      "document_id": "doc_fact_001"
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "high": 7,
+    "medium": 3,
+    "low": 7
+  },
+  "batch_stats": {
+    "documents_total": 4,
+    "documents_with_alerts": 4,
+    "groups_total": 3
+  },
+  "blocking_reasons": [
+    "DATE_EXPIRATION_DEPASSEE",
+    "DOCUMENT_TOO_INCOMPLETE",
+    "IBAN_INVALID",
+    "SIRET_INVALID",
+    "TVA_INVALID",
+    "VAT_NEGATIVE_AMOUNT",
+    "VAT_TTC_LT_HT"
+  ]
+}

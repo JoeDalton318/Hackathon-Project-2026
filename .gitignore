@@ -13,6 +13,8 @@ dist/
 build/
 env/
 venv/
+ml_train_normal/
+anomaly_model.joblib
 
 # IDEs
 .idea
