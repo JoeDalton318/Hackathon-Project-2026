@@ -8,9 +8,12 @@ from schemas.pipeline import PipelineCallbackPayload
 COLLECTION = "documents"
 
 
-async def create_record(filename: str, mime_type: str, minio_path: str) -> DocumentRecord:
+async def create_record(
+    user_id: str, filename: str, mime_type: str, minio_path: str
+) -> DocumentRecord:
     record = DocumentRecord(
         document_id=str(uuid4()),
+        user_id=user_id,
         original_filename=filename,
         mime_type=mime_type,
         minio_path=minio_path,
@@ -20,9 +23,14 @@ async def create_record(filename: str, mime_type: str, minio_path: str) -> Docum
     return record
 
 
-async def get_record(document_id: str) -> DocumentRecord | None:
+async def get_record(
+    document_id: str, user_id: str | None = None
+) -> DocumentRecord | None:
     db = get_db()
-    doc = await db[COLLECTION].find_one({"document_id": document_id})
+    query: dict = {"document_id": document_id}
+    if user_id:
+        query["user_id"] = user_id
+    doc = await db[COLLECTION].find_one(query)
     if doc is None:
         return None
     doc.pop("_id", None)
@@ -49,13 +57,14 @@ async def update_from_callback(payload: PipelineCallbackPayload) -> None:
 
 
 async def list_records(
+    user_id: str,
     status: DocumentStatus | None = None,
     document_type: DocumentType | None = None,
     skip: int = 0,
     limit: int = 20,
 ) -> tuple[int, list[DocumentRecord]]:
     db = get_db()
-    query: dict = {}
+    query: dict = {"user_id": user_id}
     if status:
         query["status"] = status
     if document_type:
@@ -79,12 +88,14 @@ async def get_supplier_documents(siret: str) -> list[DocumentRecord]:
         docs.append(DocumentRecord(**doc))
     return docs
 
+
 async def update_minio_path(document_id: str, minio_path: str) -> None:
     db = get_db()
     await db[COLLECTION].update_one(
         {"document_id": document_id},
         {"$set": {"minio_path": minio_path, "updated_at": datetime.utcnow()}},
     )
+
 
 async def update_status(document_id: str, new_status: DocumentStatus) -> None:
     db = get_db()
@@ -94,6 +105,9 @@ async def update_status(document_id: str, new_status: DocumentStatus) -> None:
     )
 
 
-async def delete_record(document_id: str) -> None:
+async def delete_record(document_id: str, user_id: str | None = None) -> None:
     db = get_db()
-    await db[COLLECTION].delete_one({"document_id": document_id})
+    query: dict = {"document_id": document_id}
+    if user_id:
+        query["user_id"] = user_id
+    await db[COLLECTION].delete_one(query)
