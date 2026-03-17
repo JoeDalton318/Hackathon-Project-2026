@@ -25,6 +25,18 @@ MONGODB_CONFIG = {
     'database': os.getenv('MONGO_DATABASE', 'hackathon_db')
 }
 
+# Configuration API Backend - Developpee par Samuel (Lead API & Backend)
+# Utilisee pour le remplissage automatique des applications metiers
+BACKEND_API_CONFIG = {
+    'base_url': os.getenv('BACKEND_API_URL', 'http://backend:8000'),
+    'endpoints': {
+        'crm_autofill': '/api/crm/auto-fill',
+        'conformity_autofill': '/api/conformity/auto-fill',
+        'health': '/health'
+    },
+    'timeout': int(os.getenv('API_TIMEOUT', 10))
+}
+
 # Parametres de retention des donnees
 RETENTION_POLICY = {
     'processed_documents_days': 30,

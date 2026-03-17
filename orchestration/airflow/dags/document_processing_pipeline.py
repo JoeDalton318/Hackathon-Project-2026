@@ -301,6 +301,111 @@ def archive_processed_documents(**context):
     return archived_count
 
 
+def auto_fill_business_applications(**context):
+    """
+    ROLE GILLS - Lead Pipeline & PM
+    
+    Remplissage automatique des applications métiers internes (CRM, Outil conformité)
+    Envoie les données structurées validées vers l'API Backend
+    qui alimente les formulaires des frontends développés par Soufiane
+    
+    Cette tâche fait le pont entre le pipeline Airflow et les applications métiers.
+    
+    Returns:
+        dict: Statistiques d'envoi aux applications métiers
+    """
+    import requests
+    import sys
+    sys.path.insert(0, '/opt/airflow/dags')
+    from config import MONGODB_CONFIG, BACKEND_API_CONFIG
+    from pymongo import MongoClient
+    
+    # Récupération des données validées depuis MongoDB
+    client = MongoClient(MONGODB_CONFIG['connection_string'])
+    db = client[MONGODB_CONFIG['database']]
+    collection = db['documents']
+    
+    # Récupérer les documents récemment traités (dernière heure)
+    from datetime import datetime, timedelta
+    recent_docs = collection.find({
+        'status': 'PROCESSED',
+        'upload_date': {'$gte': datetime.now() - timedelta(hours=1)},
+        'auto_filled': {'$ne': True}  # Pas encore envoyés aux apps métiers
+    })
+    
+    stats = {
+        'crm_sent': 0,
+        'conformity_sent': 0,
+        'total_processed': 0,
+        'errors': 0
+    }
+    
+    # URL de l'API Backend développée par Samuel
+    backend_api_url = BACKEND_API_CONFIG['base_url']
+    
+    for doc in recent_docs:
+        try:
+            # Préparer les données structurées pour les applications métiers
+            business_payload = {
+                'document_id': str(doc['_id']),
+                'filename': doc['filename'],
+                'extracted_data': doc.get('metadata', {}),
+                'timestamp': doc['upload_date'].isoformat(),
+                'status': doc['status']
+            }
+            
+            # Envoi vers l'endpoint CRM
+            try:
+                crm_url = backend_api_url + BACKEND_API_CONFIG['endpoints']['crm_autofill']
+                crm_response = requests.post(
+                    crm_url,
+                    json=business_payload,
+                    timeout=BACKEND_API_CONFIG['timeout']
+                )
+                if crm_response.status_code == 200:
+                    stats['crm_sent'] += 1
+                    logging.info(f"CRM rempli pour document {doc['filename']}")
+            except Exception as e:
+                logging.error(f"Erreur envoi CRM: {e}")
+                stats['errors'] += 1
+            
+            # Envoi vers l'endpoint Outil de Conformité
+            try:
+                conformity_url = backend_api_url + BACKEND_API_CONFIG['endpoints']['conformity_autofill']
+                conformity_response = requests.post(
+                    conformity_url,
+                    json=business_payload,
+                    timeout=BACKEND_API_CONFIG['timeout']
+                )
+                if conformity_response.status_code == 200:
+                    stats['conformity_sent'] += 1
+                    logging.info(f"Conformité remplie pour document {doc['filename']}")
+            except Exception as e:
+                logging.error(f"Erreur envoi Conformité: {e}")
+                stats['errors'] += 1
+            
+            # Marquer le document comme envoyé aux apps métiers
+            collection.update_one(
+                {'_id': doc['_id']},
+                {'$set': {'auto_filled': True, 'auto_fill_date': datetime.now()}}
+            )
+            
+            stats['total_processed'] += 1
+            
+        except Exception as e:
+            logging.error(f"Erreur traitement document {doc.get('filename', 'unknown')}: {e}")
+            stats['errors'] += 1
+    
+    client.close()
+    
+    logging.info(f"Auto-remplissage terminé - Stats: {stats}")
+    
+    # Passage des stats au contexte pour monitoring
+    context['task_instance'].xcom_push(key='autofill_stats', value=stats)
+    
+    return stats
+
+
 # Definition des taches du pipeline
 scan_task = PythonOperator(
     task_id='scan_documents',
@@ -344,6 +449,14 @@ archive_task = PythonOperator(
     dag=dag,
 )
 
+autofill_task = PythonOperator(
+    task_id='auto_fill_business_apps',
+    python_callable=auto_fill_business_applications,
+    provide_context=True,
+    dag=dag,
+)
+
 # Definition du flux d'execution du pipeline
-# scan -> download -> ocr -> validate -> [store, archive]
-scan_task >> download_task >> ocr_task >> validation_task >> [storage_task, archive_task]
+# scan -> download -> ocr -> validate -> store -> [archive, autofill]
+# L'auto-remplissage des apps métiers se fait après le stockage en BDD
+scan_task >> download_task >> ocr_task >> validation_task >> storage_task >> [archive_task, autofill_task]

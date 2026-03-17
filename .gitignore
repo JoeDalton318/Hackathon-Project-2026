@@ -47,5 +47,10 @@ react/build/
 # MinIO
 minio_data/
 
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
 # Documentation
 docs/

@@ -1,5 +1,12 @@
 version: '3.8'
 
+# ============================================
+# DOCKER COMPOSE - PROJET HACKATHON 2026
+# ============================================
+# IMPORTANT: Le fichier .env doit être à la RACINE du projet
+# Les services chargent le fichier ../.env (relatif à orchestration/)
+# ============================================
+
 services:
   # PostgreSQL - Base de données pour Airflow uniquement
   postgres:
@@ -55,7 +62,7 @@ services:
     image: apache/airflow:2.8.1-python3.11
     container_name: hackathon_airflow_init
     env_file:
-      - .env
+      - ../.env
     depends_on:
       - postgres
     environment:
@@ -89,7 +96,7 @@ services:
     image: apache/airflow:2.8.1-python3.11
     container_name: hackathon_airflow_webserver
     env_file:
-      - .env
+      - ../.env
     depends_on:
       - postgres
       - airflow-init
@@ -117,7 +124,7 @@ services:
     image: apache/airflow:2.8.1-python3.11
     container_name: hackathon_airflow_scheduler
     env_file:
-      - .env
+      - ../.env
     depends_on:
       - postgres
       - airflow-init
@@ -144,7 +151,7 @@ services:
       dockerfile: Dockerfile
     container_name: hackathon_backend
     env_file:
-      - .env
+      - ../.env
     depends_on:
       - minio
     environment:
