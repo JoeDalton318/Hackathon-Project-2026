@@ -10,6 +10,7 @@ load_dotenv(ENV_FILE)
 
 print(load_dotenv(ENV_FILE))
 
+
 class Settings(BaseSettings):
     MONGO_URL: str
     MONGO_DB: str
@@ -35,6 +36,9 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
     JWT_EXPIRE_MINUTES: int
+
+    INSEE_BASE_URL: str
+    INSEE_API_KEY: str
 
     model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8")
 
