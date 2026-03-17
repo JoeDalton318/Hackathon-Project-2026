@@ -1,0 +1,75 @@
+{
+  "batch_id": "batch_001",
+  "documents": [
+    {
+      "document_id": "doc_fact_001",
+      "doc_type": "facture",
+      "fields": {
+        "numero_facture": "FAC-2026-001",
+        "date_facture": "2026-03-10",
+        "date_echeance": "2026-03-05",
+        "fournisseur": {
+          "raison_sociale": "ACME SARL",
+          "siret": "73282932000074",
+          "tva_intracommunautaire": "FR99732829320"
+        },
+        "client": {
+          "raison_sociale": "CLIENT XYZ",
+          "siret": "42385519600014"
+        },
+        "amount_ht": 1000.0,
+        "amount_tva": -50.0,
+        "amount_ttc": 950.0,
+        "confidence": 0.42
+      },
+      "metadata": {
+        "field_confidence": {
+          "numero_facture": 0.52,
+          "date_facture": 0.57,
+          "siret": 0.41
+        }
+      }
+    },
+    {
+      "document_id": "doc_fact_incomplete",
+      "doc_type": "facture",
+      "fields": {
+        "amount_ttc": 1000.0
+      },
+    "metadata": {}
+    },
+    {
+      "document_id": "doc_att_001",
+      "doc_type": "attestation_siret",
+      "fields": {
+        "supplier_name": "ACME SARL",
+        "siret": "73282932000075",
+        "date_emission": "2026-01-01",
+        "date_expiration": "2026-02-28"
+      },
+      "metadata": {
+        "field_confidence": {
+          "siret": 0.41,
+          "date_expiration": 0.43
+        }
+      }
+    },
+    {
+      "document_id": "doc_rib_001",
+      "doc_type": "rib",
+      "fields": {
+        "supplier_name": "ACME CONSULTING",
+        "iban": "FRXX30006000001123456789018",
+        "bic": "AGRIFRPP",
+        "titulaire": "ACME CONSULTING"
+      },
+      "metadata": {
+        "field_confidence": {
+          "iban": 0.39,
+          "bic": 0.88,
+          "titulaire": 0.42
+        }
+      }
+    }
+  ]
+}
