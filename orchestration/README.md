@@ -10,17 +10,15 @@ Ce repertoire contient l'orchestration complete du pipeline de traitement de doc
 
 Le projet utilise **MongoDB Atlas** (cloud) au lieu d'une base MongoDB locale.
 
-**Connection string:**
-```
-mongodb+srv://admin:wYS7UuJm_G7prB_@hackaton.dcvuugn.mongodb.net/?appName=hackaton
-```
+**⚠️ SECURITE:** Les credentials MongoDB sont fournis par Samuel et doivent etre configures dans le fichier `.env` (non committe sur Git).
 
 **Database:** `hackathon_db`
 
 **Configuration:**
-- Fichier `.env` contient les credentials (non committe)
-- Fichier `.env.example` contient le template
-- Tous les DAGs utilisent automatiquement MongoDB Atlas via `config.py`
+1. Copier `.env.example` vers `.env`
+2. Demander les credentials MongoDB a Samuel (Lead Backend)
+3. Remplir `MONGO_URL` dans le fichier `.env`
+4. Tous les DAGs utilisent automatiquement MongoDB Atlas via `config.py`
 
 **Avantages:**
 - Accessible depuis n'importe ou (cloud)

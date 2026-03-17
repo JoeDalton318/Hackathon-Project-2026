@@ -19,11 +19,9 @@ MINIO_CONFIG = {
 }
 
 # Configuration MongoDB Atlas (Cloud) - Fourni par Samuel
+# IMPORTANT: Les credentials doivent etre definis dans les variables d'environnement
 MONGODB_CONFIG = {
-    'connection_string': os.getenv(
-        'MONGO_URL', 
-        'mongodb+srv://admin:wYS7UuJm_G7prB_@hackaton.dcvuugn.mongodb.net/?appName=hackaton'
-    ),
+    'connection_string': os.getenv('MONGO_URL'),  # OBLIGATOIRE: definir dans .env
     'database': os.getenv('MONGO_DATABASE', 'hackathon_db')
 }
 
