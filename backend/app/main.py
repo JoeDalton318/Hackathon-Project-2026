@@ -1,36 +1,64 @@
-"""
-FastAPI Backend - Point d'entrée
-À personnaliser par l'équipe backend
-"""
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, APIRouter, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from schemas.response import APIError
+
+from app.config import settings
+from core.logging import setup_logging
+from database.minio import init_buckets
+from database.mongo import close_mongo, connect_mongo, create_indexes
+from routers import auth, compliance, crm, documents, pipeline, ws
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    setup_logging()
+    await connect_mongo()
+    await create_indexes()
+    init_buckets()
+    yield
+    await close_mongo()
+
 
 app = FastAPI(
-    title="Hackathon Data Engineering API",
-    description="API pour l'upload de documents et l'interface avec la BDD",
-    version="1.0.0"
+    title="Hackathon 2026 — Document Processing API (Data-architecture)",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
-# Configuration CORS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # À adapter en production
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root():
-    """Endpoint de santé"""
-    return {"status": "ok", "message": "API Hackathon is running"}
+api_router = APIRouter(prefix="/api")
+api_router.include_router(auth.router)
+api_router.include_router(documents.router)
+api_router.include_router(pipeline.router)
+api_router.include_router(ws.router)
+api_router.include_router(crm.router)
+api_router.include_router(compliance.router)
+
+app.include_router(api_router)
+
 
 @app.get("/health")
-async def health_check():
-    """Vérification de l'état de l'API"""
-    return {"status": "healthy"}
+async def health():
+    return {"status": "ok"}
 
-# TODO: Ajouter vos endpoints ici
-# - Upload de documents
-# - Récupération des données
-# - etc.
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=APIError(
+            error=exc.detail,
+            code=f"HTTP_{exc.status_code}",
+        ).model_dump(),
+    )
