@@ -35,7 +35,6 @@ Le moteur compare plusieurs documents d’un même batch pour détecter :
 
 ### Détection d’anomalies ML
 Le moteur inclut un modèle complémentaire basé sur `IsolationForest`.
-Ce modèle n’a pas vocation à remplacer les règles métier, mais à ajouter un signal d’atypie.
 
 ---
 ## Exemple Fonctionnement du process
