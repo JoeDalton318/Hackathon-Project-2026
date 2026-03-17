@@ -1,25 +1,3 @@
 .App {
-  text-align: center;
   min-height: 100vh;
-  background-color: #282c34;
-  color: white;
-}
-
-.App-header {
-  padding: 2rem;
-}
-
-.App-header h1 {
-  margin: 0;
-  font-size: 2.5rem;
-}
-
-.App-header p {
-  margin-top: 1rem;
-  font-size: 1.2rem;
-  color: #61dafb;
-}
-
-main {
-  padding: 2rem;
 }
