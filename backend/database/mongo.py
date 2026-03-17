@@ -1,5 +1,4 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from typing import cast
 
 from app.config import settings
 

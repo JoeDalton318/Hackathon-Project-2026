@@ -8,8 +8,6 @@ ENV_FILE = PROJECT_ROOT / ".env"
 
 load_dotenv(ENV_FILE)
 
-print(load_dotenv(ENV_FILE))
-
 
 class Settings(BaseSettings):
     MONGO_URL: str
