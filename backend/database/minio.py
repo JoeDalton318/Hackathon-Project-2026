@@ -18,7 +18,6 @@ def get_minio() -> Minio:
 
 
 def init_buckets() -> None:
-    """Crée les buckets Bronze / Silver / Gold (data-architecture)."""
     client = get_minio()
     for bucket in [
         settings.MINIO_BUCKET_RAW,

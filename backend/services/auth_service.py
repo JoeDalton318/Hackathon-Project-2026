@@ -1,14 +1,13 @@
 from uuid import uuid4
 
-from core.jwt import hash_password, verify_password
+from models.user import UserRecord, UserRole
 from database.mongo import get_db
-from models.user import UserRecord
+from core.jwt import hash_password, verify_password
 
 COLLECTION = "users"
 
 
-async def create_user(email: str, password: str, nom: str = "") -> UserRecord | None:
-    """Crée un utilisateur (data-architecture: email, password_hash, nom, created_at)."""
+async def create_user(email: str, password: str, nom: str) -> UserRecord | None:
     db = get_db()
     existing = await db[COLLECTION].find_one({"email": email})
     if existing:
@@ -16,12 +15,10 @@ async def create_user(email: str, password: str, nom: str = "") -> UserRecord | 
     record = UserRecord(
         user_id=str(uuid4()),
         email=email,
-        password_hash=hash_password(password),
+        hashed_password=hash_password(password),
         nom=nom,
     )
-    data = record.model_dump()
-    await db[COLLECTION].insert_one(data)
-    record.password_hash = None
+    await db[COLLECTION].insert_one(record.model_dump())
     return record
 
 
@@ -30,11 +27,11 @@ async def authenticate_user(email: str, password: str) -> UserRecord | None:
     doc = await db[COLLECTION].find_one({"email": email})
     if doc is None:
         return None
-    if not verify_password(password, doc.get("password_hash", "")):
-        return None
     doc.pop("_id", None)
-    doc.pop("password_hash", None)
-    return UserRecord(**doc)
+    user = UserRecord(**doc)
+    if not verify_password(password, user.hashed_password):
+        return None
+    return user
 
 
 async def get_user_by_id(user_id: str) -> UserRecord | None:
@@ -43,5 +40,4 @@ async def get_user_by_id(user_id: str) -> UserRecord | None:
     if doc is None:
         return None
     doc.pop("_id", None)
-    doc.pop("password_hash", None)
     return UserRecord(**doc)

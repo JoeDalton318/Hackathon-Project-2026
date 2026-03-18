@@ -1,13 +1,18 @@
 from datetime import datetime
+from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field
 
 
+class UserRole(StrEnum):
+    ADMIN = auto()
+    USER = auto()
+
+
 class UserRecord(BaseModel):
-    """Aligné data-architecture: users (email, password_hash, nom, created_at)."""
     user_id: str
     email: str
-    password_hash: str | None = None  # non exposé dans get_current_user
-    nom: str = ""
-    role: str = "USER"  # optionnel, non dans le schéma data-arch
+    hashed_password: str
+    nom: str
+    role: UserRole = UserRole.USER
     created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -1,10 +1,12 @@
 import bcrypt
+
 from datetime import datetime, timedelta
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.config import settings
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from models.user import UserRecord
@@ -13,6 +15,8 @@ from database.mongo import get_db
 bearer_scheme = HTTPBearer()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
 
 
 def hash_password(password: str) -> str:
@@ -35,7 +39,6 @@ def decode_access_token(token: str) -> dict | None:
     except JWTError:
         return None
 
-
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> UserRecord:
@@ -54,5 +57,4 @@ async def get_current_user(
             detail="Utilisateur introuvable",
         )
     doc.pop("_id", None)
-    doc.pop("password_hash", None)
     return UserRecord(**doc)

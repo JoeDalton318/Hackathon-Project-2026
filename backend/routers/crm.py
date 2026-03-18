@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, status
 
 from schemas.crm import SupplierOut
-from schemas.response import APIResponse
 from services import document_service
+from schemas.response import APIResponse
 
 router = APIRouter(prefix="/crm", tags=["crm"])
+
 
 
 @router.get("/supplier/{siret}")
@@ -14,8 +15,7 @@ async def get_supplier(siret: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fournisseur introuvable")
     merged: dict = {}
     for doc in documents:
-        donnees = doc.resultat_extraction.get("donnees", {})
-        merged.update(donnees)
+        merged.update(doc.extracted_data)
     return APIResponse(data=SupplierOut(
         siret=siret,
         raison_sociale=merged.get("raison_sociale"),
@@ -24,7 +24,7 @@ async def get_supplier(siret: str):
         tva_intracommunautaire=merged.get("tva_intracommunautaire"),
         conformite_status=merged.get("conformite_status"),
         documents=[
-            {"document_id": d.document_id, "type": d.type_document_extrait, "statut": d.statut_traitement}
+            {"document_id": d.document_id, "type": d.document_type, "status": d.status}
             for d in documents
         ],
     ).model_dump())

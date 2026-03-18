@@ -2,26 +2,22 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from models.document import DocumentStatus, DocumentType
+
 
 class UploadResponse(BaseModel):
     document_id: str
     filename: str
-    statut_traitement: str
+    status: DocumentStatus
 
 
 class DocumentOut(BaseModel):
-    """Aligné data-architecture: champs documents."""
     document_id: str
-    user_id: str
-    nom_fichier_original: str
-    type_mime: str
-    chemin_minio_bronze: str
-    chemin_minio_silver: str
-    statut_traitement: str
-    job_id: str | None
-    type_document_extrait: str | None
-    resultat_extraction: dict
-    texte_ocr: str | None
+    original_filename: str
+    status: DocumentStatus
+    document_type: DocumentType
+    extracted_data: dict
+    anomalies: list[dict]
     created_at: datetime
     updated_at: datetime
 

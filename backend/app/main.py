@@ -7,9 +7,10 @@ from schemas.response import APIError
 
 from app.config import settings
 from core.logging import setup_logging
-from database.minio import init_buckets
+
+# from database.minio import init_buckets
 from database.mongo import close_mongo, connect_mongo, create_indexes
-from routers import auth, compliance, crm, documents, pipeline, ws
+from routers import compliance, crm, documents, pipeline, ws, auth
 
 
 @asynccontextmanager
@@ -17,13 +18,13 @@ async def lifespan(app: FastAPI):
     setup_logging()
     await connect_mongo()
     await create_indexes()
-    init_buckets()
+    # init_buckets()
     yield
     await close_mongo()
 
 
 app = FastAPI(
-    title="Hackathon 2026 — Document Processing API (Data-architecture)",
+    title="Hackathon 2026 — Document Processing API",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -38,12 +39,12 @@ app.add_middleware(
 )
 
 api_router = APIRouter(prefix="/api")
-api_router.include_router(auth.router)
 api_router.include_router(documents.router)
 api_router.include_router(pipeline.router)
 api_router.include_router(ws.router)
 api_router.include_router(crm.router)
 api_router.include_router(compliance.router)
+api_router.include_router(auth.router)
 
 app.include_router(api_router)
 

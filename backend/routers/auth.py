@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from core.jwt import create_access_token, get_current_user
 from models.user import UserRecord
 from schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserOut
-from schemas.response import APIResponse
 from services import auth_service
+from schemas.response import APIResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -57,7 +57,6 @@ async def me(current_user: UserRecord = Depends(get_current_user)):
         nom=current_user.nom,
         role=current_user.role,
     ).model_dump())
-
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(current_user: UserRecord = Depends(get_current_user)):

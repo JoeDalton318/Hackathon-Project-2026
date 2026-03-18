@@ -15,8 +15,8 @@ async def pipeline_result(payload: PipelineCallbackPayload):
         payload.document_id,
         {
             "document_id": payload.document_id,
-            "statut_traitement": payload.status,
-            "type_document_extrait": payload.document_type,
+            "status": payload.status,
+            "document_type": payload.document_type,
             "anomalies": payload.anomalies,
         },
     )

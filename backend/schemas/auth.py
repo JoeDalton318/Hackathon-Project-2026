@@ -9,7 +9,7 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: str
     password: str
-    nom: str = ""
+    nom: str
 
 
 class TokenResponse(BaseModel):
@@ -21,7 +21,7 @@ class UserOut(BaseModel):
     user_id: str
     email: str
     nom: str
-    role: str = "USER"
+    role: str
 
 
 TokenResponse.model_rebuild()

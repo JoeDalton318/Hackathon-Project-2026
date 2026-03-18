@@ -1,4 +1,5 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pymongo import ASCENDING
 
 from app.config import settings
 
@@ -25,9 +26,12 @@ def get_db() -> AsyncIOMotorDatabase:
 
 
 async def create_indexes() -> None:
-    """Crée les index recommandés data-architecture (users: email unique; documents: user_id, statut_traitement)."""
     db = get_db()
-    await db[COLLECTION_USERS].create_index([("email", 1)], unique=True)
-    await db[COLLECTION_DOCUMENTS].create_index([("user_id", 1), ("created_at", -1)])
-    await db[COLLECTION_DOCUMENTS].create_index([("statut_traitement", 1)])
-    await db[COLLECTION_DOCUMENTS].create_index([("user_id", 1), ("statut_traitement", 1)])
+    await db[COLLECTION_USERS].create_index([("email", ASCENDING)], unique=True)
+    await db[COLLECTION_DOCUMENTS].create_index(
+        [("user_id", ASCENDING), ("created_at", ASCENDING)]
+    )
+    await db[COLLECTION_DOCUMENTS].create_index([("status", ASCENDING)])
+    await db[COLLECTION_DOCUMENTS].create_index(
+        [("user_id", ASCENDING), ("status", ASCENDING)]
+    )
