@@ -45,3 +45,5 @@ react/build/
 
 # MinIO
 minio_data/
+# Dataset generated
+dataset/

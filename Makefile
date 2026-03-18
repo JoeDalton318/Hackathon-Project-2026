@@ -30,3 +30,7 @@ ocr-dataset:
 # Build l'image Docker OCR
 ocr-docker-build:
 	cd nlp-ocr && docker build -t ocr-extraction:latest .
+
+# Injecter les fichiers dans MinIO zone RAW (sans suppression)
+ocr-inject:
+	cd nlp-ocr && python scripts/inject_minio.py --source ./dataset/pdfs --env .env
