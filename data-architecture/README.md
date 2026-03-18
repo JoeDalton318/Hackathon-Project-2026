@@ -10,7 +10,7 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 
 - **Variable d’environnement** (à configurer côté backend / orchestration) :  
   `MONGO_URL=mongodb+srv://<user>:<password>@hackaton.dcvuugn.mongodb.net/?appName=hackaton`
-- Ne jamais commiter le mot de passe dans le dépôt. Utiliser un fichier `.env` (voir `.env.example` dans ce dossier).
+- Ne jamais commiter le mot de passe dans le dépôt. Utiliser un fichier `.env` (voir `.env.example` à la racine du projet).
 - Le **backend (FastAPI)** et éventuellement le **pipeline (Airflow)** se connectent à Atlas via cette URL.
 
 ---
@@ -202,37 +202,20 @@ MongoDB ne stocke **pas** les fichiers ; il stocke la **clé d’objet** dans `m
 
 | Fichier | Description |
 |---------|--------------|
-| `README.md` | Ce fichier : flux de données, rôle des collections, **architecture Bronze/Silver/Gold détaillée** (section 4). |
+| `README.md` | Ce fichier : flux de données, rôle des collections, **architecture MinIO** (section 4). |
 | `schemas/collections.md` | **Schéma complet** des collections (aligné avec le backend FastAPI). |
-| `scripts/init_mongodb.py` | **Script Python** : vérifie la connexion, crée les collections et les index (voir section 6). |
-| `scripts/requirements.txt` | Dépendances du script Python (`pymongo`, `python-dotenv`). |
-| `init-scripts/02-mongodb-indexes.js` | Script JS pour créer les index (alternative avec `mongosh`). |
-| `.env.example` | Exemple de variable `MONGO_URL` (sans mot de passe). |
+| `init-scripts/02-mongodb-indexes.js` | Script JS pour créer les index manuellement avec `mongosh` (optionnel). |
 
 ---
 
-## 6. Initialiser la base (script Python)
+## 6. Initialiser la base
 
-Pour une **base vide** : vérifier la connexion, créer les collections `users` et `documents`, et créer les index.
-
-**Prérequis :** Python 3.8+, variable `MONGO_URL` (ou fichier `.env` dans `data-architecture/` avec `MONGO_URL=...`).
-
-```bash
-cd data-architecture/scripts
-pip install -r requirements.txt
-export MONGO_URL="mongodb+srv://user:password@cluster.mongodb.net/?appName=hackaton"
-python init_mongodb.py
-```
-
-Avec un fichier `.env` (copie de `.env.example` à la racine de `data-architecture/`, en renseignant le vrai mot de passe) :
-
-```bash
-cd data-architecture/scripts
-pip install -r requirements.txt
-python init_mongodb.py
-```
-
-Le script affiche si la connexion est OK, crée les collections si besoin, puis les index. Idempotent : on peut le relancer sans doublon.
+- **Recommandé :** Lancer le **backend** (FastAPI). Au démarrage, `backend/database/mongo.py` crée les index via `create_indexes()`. Les collections sont créées à la première écriture.
+- **Optionnel (sans lancer le backend) :** Exécuter le script JS avec `mongosh` :
+  ```bash
+  mongosh "<MONGO_URL>" --file data-architecture/init-scripts/02-mongodb-indexes.js
+  ```
+  Les variables d’environnement (ex. `MONGO_URL`, `MONGO_DB`) sont à configurer à la **racine du projet** (voir `.env.example` à la racine).
 
 ---
 
@@ -241,4 +224,4 @@ Le script affiche si la connexion est OK, crée les collections si besoin, puis 
 - **`users`** : index unique sur `email`.  
 - **`documents`** : index sur `user_id` + `created_at`, `status`, `user_id` + `status` pour les listes et filtres.
 
-Créés automatiquement par `scripts/init_mongodb.py` (ou manuellement avec `init-scripts/02-mongodb-indexes.js`). Le nom de la base peut être défini via la variable d’environnement `MONGO_DB` (défaut : `hackathon`) pour rester aligné avec le backend.
+Créés au **démarrage du backend** (`backend/database/mongo.py` → `create_indexes()`) ou manuellement avec `init-scripts/02-mongodb-indexes.js`. Le nom de la base est défini par `MONGO_DB` (défaut : `hackathon`) à la racine du projet.
