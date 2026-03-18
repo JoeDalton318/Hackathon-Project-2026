@@ -1,28 +1,27 @@
 """
 Configuration centralisee pour tous les DAGs Airflow
-Ce module contient les parametres partages entre les differents pipelines
+Ce module contient les parametres partages entre les differents pipelines.
+Toutes les variables sont chargees depuis le fichier .env a la racine du projet.
 """
 import os
 
-# Configuration MinIO Data Lake
+# Configuration MinIO Data Lake - Variables d'environnement alignees avec le Backend
 MINIO_CONFIG = {
-    'endpoint': 'minio:9000',
-    'access_key': 'minio_admin',
-    'secret_key': 'minio_admin_pass',
-    'secure': False,
+    'endpoint': os.getenv('MINIO_ENDPOINT', 'minio:9000'),
+    'access_key': os.getenv('MINIO_ACCESS_KEY', 'minioadmin'),
+    'secret_key': os.getenv('MINIO_SECRET_KEY', 'minioadmin'),
+    'secure': os.getenv('MINIO_SECURE', 'False').lower() == 'true',
     'buckets': {
-        'raw': 'documents-raw',
-        'processed': 'documents-processed',
-        'archive': 'documents-archive',
-        'failed': 'documents-failed'
+        'raw': os.getenv('MINIO_BUCKET_RAW', 'raw'),
+        'clean': os.getenv('MINIO_BUCKET_CLEAN', 'clean'),
+        'curated': os.getenv('MINIO_BUCKET_CURATED', 'curated')
     }
 }
 
-# Configuration MongoDB Atlas (Cloud) - Fourni par Samuel
-# IMPORTANT: Les credentials doivent etre definis dans les variables d'environnement
+# Configuration MongoDB Atlas (Cloud) - Alignee avec le Backend
 MONGODB_CONFIG = {
-    'connection_string': os.getenv('MONGO_URL'),  # OBLIGATOIRE: definir dans .env
-    'database': os.getenv('MONGO_DATABASE', 'hackathon_db')
+    'connection_string': os.getenv('MONGO_URL'),
+    'database': os.getenv('MONGO_DB', 'hackathon')
 }
 
 # Configuration API Backend - Developpee par Samuel (Lead API & Backend)
