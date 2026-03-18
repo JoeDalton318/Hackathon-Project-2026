@@ -7,8 +7,9 @@ from schemas.response import APIError
 
 from app.config import settings
 from core.logging import setup_logging
-from database.minio import init_buckets
-from database.mongo import close_mongo, connect_mongo
+
+# from database.minio import init_buckets
+from database.mongo import close_mongo, connect_mongo, create_indexes
 from routers import compliance, crm, documents, pipeline, ws, auth
 
 
@@ -16,6 +17,7 @@ from routers import compliance, crm, documents, pipeline, ws, auth
 async def lifespan(app: FastAPI):
     setup_logging()
     await connect_mongo()
+    await create_indexes()
     # init_buckets()
     yield
     await close_mongo()
@@ -50,6 +52,7 @@ app.include_router(api_router)
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:

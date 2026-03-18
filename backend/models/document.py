@@ -24,6 +24,7 @@ class DocumentType(StrEnum):
 
 
 class DocumentRecord(BaseModel):
+    user_id: str
     document_id: str
     original_filename: str
     mime_type: str
