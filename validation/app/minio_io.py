@@ -15,6 +15,7 @@ DEFAULT_BUCKET = settings.minio_bucket
 DEFAULT_INPUT_PREFIX = settings.minio_curated_prefix
 DEFAULT_VALIDATION_PREFIX = settings.minio_validation_prefix
 
+
 @dataclass
 class MinioJsonObject:
     object_name: str
@@ -54,18 +55,15 @@ class MinioIO:
         objects: List[str] = []
 
         for obj in self.client.list_objects(self.bucket, prefix=self.input_prefix, recursive=True):
-            if not obj.object_name.endswith(".json"):
+            object_name = obj.object_name.replace("\\", "/")
+
+            if not object_name.endswith("/extraction.json"):
                 continue
 
-            
-            if not obj.object_name.endswith("/extraction.json"):
+            if "/validation/" in object_name:
                 continue
 
-           
-            if "/validation/" in obj.object_name.replace("\\", "/"):
-                continue
-
-            objects.append(obj.object_name)
+            objects.append(object_name)
 
         return sorted(objects)
 
@@ -78,19 +76,35 @@ class MinioIO:
             response.close()
             response.release_conn()
 
+    def load_payload_by_object_name(self, object_name: str) -> MinioJsonObject:
+        normalized = object_name.replace("\\", "/")
+        payload = self.read_json_object(normalized)
+        return MinioJsonObject(object_name=normalized, payload=payload)
+
     def load_input_payloads(
         self,
         limit: Optional[int] = None,
         document_ids: Optional[List[str]] = None,
         file_names: Optional[List[str]] = None,
+        object_names: Optional[List[str]] = None,
     ) -> List[MinioJsonObject]:
-        object_names = self.list_input_json_objects()
+        # lecture directe par clé MinIO
+        if object_names:
+            results: List[MinioJsonObject] = []
+            for object_name in object_names:
+                results.append(self.load_payload_by_object_name(object_name))
+                if limit is not None and len(results) >= limit:
+                    break
+            return results
+
+        # Cas fallback : scan + filtre
+        all_object_names = self.list_input_json_objects()
         results: List[MinioJsonObject] = []
 
         wanted_ids = set(document_ids or [])
         wanted_files = set(file_names or [])
 
-        for object_name in object_names:
+        for object_name in all_object_names:
             payload = self.read_json_object(object_name)
 
             payload_document_id = payload.get("document_id")
@@ -132,8 +146,9 @@ class MinioIO:
 
     def store_batch_validation_result(self, batch_id: str, payload: Dict[str, Any]) -> str:
         now = datetime.utcnow()
+        prefix = self.validation_prefix.rstrip("/") + "/"
         object_name = (
-            f"{self.validation_prefix}"
+            f"{prefix}"
             f"batches/{now.year}/{now.month:02d}/{now.day:02d}/"
             f"{batch_id}/validation_result.json"
         )
@@ -151,8 +166,9 @@ class MinioIO:
         batch_id: Optional[str] = None,
     ) -> str:
         now = datetime.utcnow()
+        prefix = self.validation_prefix.rstrip("/") + "/"
         object_name = (
-            f"{self.validation_prefix}"
+            f"{prefix}"
             f"documents/{now.year}/{now.month:02d}/{now.day:02d}/"
             f"{document_id}/validation_result.json"
         )

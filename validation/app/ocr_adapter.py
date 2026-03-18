@@ -24,6 +24,7 @@ def load_ocr_batch_from_minio(
     limit: int | None = None,
     document_ids: list[str] | None = None,
     file_names: list[str] | None = None,
+    object_names: list[str] | None = None,
     endpoint: str | None = None,
     access_key: str | None = None,
     secret_key: str | None = None,
@@ -44,6 +45,7 @@ def load_ocr_batch_from_minio(
         limit=limit,
         document_ids=document_ids,
         file_names=file_names,
+        object_names=object_names,
     )
 
     if not objects:
@@ -284,10 +286,11 @@ def extraction_result_to_document(
         fields.siret_siege = _field_value(typed_data.get("siret"))
 
     elif doc_type == "attestation_vigilance_urssaf":
+        siret_value = _field_value(typed_data.get("siret"))
         fields.denomination = _field_value(typed_data.get("denomination"))
         fields.supplier_name = _field_value(typed_data.get("denomination"))
-        fields.siret = _field_value(typed_data.get("siret"))
-        fields.siren = _field_value(typed_data.get("siret"))[:9] if _field_value(typed_data.get("siret")) else None
+        fields.siret = siret_value
+        fields.siren = siret_value[:9] if siret_value else None
         fields.date_emission = _field_value(typed_data.get("date_emission"))
         fields.issue_date = _field_value(typed_data.get("date_emission"))
         fields.date_expiration = _field_value(typed_data.get("date_expiration"))

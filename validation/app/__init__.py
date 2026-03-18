@@ -1,8 +1,3 @@
-__all__ = [
-    "models",
-    "insee_client",
-    "validation_core",
-    "validation_rules",
-    "anomaly_model",
-    "validation_engine",
-]
+from .service import run_validation
+
+__all__ = ["run_validation"]

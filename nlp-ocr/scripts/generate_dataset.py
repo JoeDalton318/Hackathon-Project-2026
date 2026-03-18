@@ -153,7 +153,7 @@ def gen_facture_pdf(emetteur: dict, client: dict, falsified: bool = False) -> by
     pdf.cell(0, 5, f"IBAN : {emetteur['iban']}", ln=True)
     pdf.cell(0, 5, f"BIC  : {emetteur['bic']}",  ln=True)
     pdf.cell(0, 5, f"SIRET : {display_siret}",    ln=True)
-    return bytes(pdf.output())
+    return pdf.output(dest="S").encode("latin-1")
 
 
 def gen_urssaf_pdf(company: dict, expired: bool = False) -> bytes:
@@ -179,7 +179,7 @@ def gen_urssaf_pdf(company: dict, expired: bool = False) -> bytes:
     pdf.set_font("Helvetica", "I", 9)
     pdf.multi_cell(0, 5, f"Document valide du {d_em.strftime('%d/%m/%Y')} au {d_exp.strftime('%d/%m/%Y')}. "
                   "Vérifiable sur net-entreprises.fr")
-    return bytes(pdf.output())
+    return pdf.output(dest="S").encode("latin-1")
 
 
 def gen_rib_pdf(company: dict) -> bytes:
@@ -191,7 +191,7 @@ def gen_rib_pdf(company: dict) -> bytes:
                  "", "Domiciliation : BNP Paribas",
                  f"IBAN : {company['iban']}", f"BIC  : {company['bic']}"]:
         pdf.cell(0, 7, line, ln=True)
-    return bytes(pdf.output())
+    return pdf.output(dest="S").encode("latin-1")
 
 
 # ── Dégradation d'image ──────────────────────────────────────────────────────
