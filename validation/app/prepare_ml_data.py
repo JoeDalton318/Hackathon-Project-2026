@@ -5,8 +5,8 @@ from pathlib import Path
 from app.anomaly_model import DocumentAnomalyModel
 from app.models import BatchInput
 
-TRAIN_DIR = Path("curated/ml_train_normal")
-MODEL_PATH = "curated/anomaly_model.joblib"
+TRAIN_DIR = Path("artifacts/ml_train_normal")
+MODEL_PATH = "artifacts/anomaly_model.joblib"
 
 
 def make_normal_sample(idx: int) -> dict:

@@ -43,8 +43,8 @@ REQUIRED_BY_DOC_TYPE = {
     "bon_de_livraison": ["date_livraison", "client"],
     "attestation": ["date_emission"],
     "attestation_siret": ["siret", "date_emission", "date_expiration"],
-    "attestation_vigilance_urssaf": ["date_emission", "date_expiration"],
-    "extrait_kbis": ["siren", "siret_siege", "denomination"],
+    "attestation_vigilance_urssaf": ["siret", "date_emission", "date_expiration"],
+    "extrait_kbis": ["siren", "denomination"],
     "rib": ["iban", "bic", "titulaire"],
 }
 
@@ -361,6 +361,9 @@ def rule_reference_format(doc: DocumentInput) -> List[Alert]:
 
 
 def rule_siret_exists_insee_batch(batch: BatchInput, insee_client: InseeClient) -> List[Alert]:
+    if not getattr(insee_client, "enabled", False):
+        return []
+
     alerts = []
     siret_to_docs = {}
 
@@ -718,6 +721,86 @@ def rule_low_confidence_critical_fields(doc: DocumentInput, threshold: float = 0
                 confidence=float(score),
                 threshold=threshold,
             ))
+
+    return alerts
+
+def rule_document_type_suspect(doc: DocumentInput) -> List[Alert]:
+    """
+    Détecte un type de document probablement mal classé par l'OCR/NLP.
+    Exemple :
+    - document classé 'rib'
+    - mais le texte OCR ressemble fortement à une facture
+    """
+    raw_text = (doc.fields.raw_text or "").upper()
+
+    if not raw_text:
+        return []
+
+    alerts = []
+
+    invoice_markers = [
+        "FAC-",
+        "FACTURE",
+        "MONTANT HT",
+        "TVA",
+        "TOTAL TTC",
+        "DATE D'ÉCHÉANCE",
+        "NUMÉRO DE FACTURE",
+        "N° : FAC",
+    ]
+
+    rib_markers = [
+        "RIB",
+        "RELEVÉ D'IDENTITÉ BANCAIRE",
+        "RELEVE D'IDENTITE BANCAIRE",
+        "IBAN",
+        "BIC",
+        "DOMICILIATION",
+    ]
+
+    attestation_markers = [
+        "ATTESTATION DE VIGILANCE",
+        "URSSAF",
+        "DATE D'EXPIRATION",
+        "N° D'ATTESTATION",
+    ]
+
+    invoice_hits = sum(marker in raw_text for marker in invoice_markers)
+    rib_hits = sum(marker in raw_text for marker in rib_markers)
+    attestation_hits = sum(marker in raw_text for marker in attestation_markers)
+
+    suspected_type = None
+    severity = "medium"
+
+    
+    if doc.doc_type == "rib" and invoice_hits >= 3:
+        suspected_type = "facture"
+
+    
+    elif doc.doc_type == "rib" and attestation_hits >= 2:
+        suspected_type = "attestation_vigilance_urssaf"
+
+
+    elif doc.doc_type == "facture" and rib_hits >= 3 and invoice_hits <= 1:
+        suspected_type = "rib"
+
+  
+    elif doc.doc_type == "attestation_vigilance_urssaf" and invoice_hits >= 3:
+        suspected_type = "facture"
+
+    if suspected_type:
+        alerts.append(_mk(
+            "DOCUMENT_TYPE_SUSPECT",
+            severity,
+            "Le type de document détecté semble incohérent avec le contenu OCR.",
+            [doc.document_id],
+            predicted_type=doc.doc_type,
+            suspected_type=suspected_type,
+            invoice_marker_hits=invoice_hits,
+            rib_marker_hits=rib_hits,
+            attestation_marker_hits=attestation_hits,
+            file_name=doc.fields.file_name,
+        ))
 
     return alerts
 

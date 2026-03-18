@@ -362,7 +362,7 @@ def get_critical_fields_by_doc_type(doc_type: str) -> List[str]:
         "attestation_vigilance": ["date_emission", "date_expiration"],
         "attestation_vigilance_urssaf": ["date_emission", "date_expiration"],
         "rib": ["iban", "bic", "titulaire"],
-        "extrait_kbis": ["siren", "siret_siege", "denomination"],
+        "extrait_kbis": ["siren", "denomination"],
     }
     return mapping.get(doc_type, [])
 

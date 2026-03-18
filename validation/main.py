@@ -1,181 +1,177 @@
+from __future__ import annotations
+
 import argparse
-import json
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
-import requests
-
+from app.settings import settings
 from app.anomaly_model import DocumentAnomalyModel
 from app.insee_client import InseeClient
-from app.models import BatchInput
+from app.minio_io import MinioIO
+from app.ocr_adapter import load_ocr_batch_from_minio, load_ocr_batch_from_dir
+from app.result_formatter import build_document_validation_results
 from app.validation_engine import AnomalyEngine
+from app.prepare_ml_data import generate_training_data, train_model
+
+DEFAULT_MODEL_PATH = Path("artifacts") / "anomaly_model.joblib"
 
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-INTERNAL_API_SECRET = os.getenv("INTERNAL_API_SECRET", "")
-
-DOC_TYPE_MAP = {
-    "facture": "FACTURE",
-    "devis": "DEVIS",
-    "extrait_kbis": "KBIS",
-    "kbis": "KBIS",
-    "rib": "RIB",
-    "attestation_siret": "ATTESTATION_SIRET",
-    "attestation_vigilance_urssaf": "ATTESTATION_URSSAF",
-    "attestation_urssaf": "ATTESTATION_URSSAF",
-    "attestation": "UNKNOWN",
-    "unknown": "UNKNOWN",
-}
-
-
-def load_json(path: str) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_json(path: str, payload: Dict[str, Any]) -> None:
-    output_path = Path(path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
-
-
-def normalize_doc_type(value: Optional[str]) -> str:
-    if not value:
-        return "unknown"
-    return str(value).strip().lower()
-
-
-def to_backend_doc_type(value: str) -> str:
-    return DOC_TYPE_MAP.get(normalize_doc_type(value), "unknown")
-
-
-def build_batch_input(payload: Dict[str, Any]) -> BatchInput:
-
-    if "documents" in payload and isinstance(payload["documents"], list):
-        batch_id = payload.get("batch_id") or f"batch_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-        documents = []
-
-        for doc in payload["documents"]:
-            documents.append({
-                "document_id": doc.get("document_id"),
-                "doc_type": normalize_doc_type(doc.get("doc_type") or doc.get("document_type")),
-                "fields": doc.get("fields") or doc.get("extracted_data") or {},
-                "metadata": doc.get("metadata") or {},
-            })
-
-        return BatchInput(batch_id=batch_id, documents=documents)
-
-    if "document_id" in payload:
-        return BatchInput(
-            batch_id=payload.get("batch_id") or f"batch_{payload['document_id']}",
-            documents=[{
-                "document_id": payload["document_id"],
-                "doc_type": normalize_doc_type(payload.get("doc_type") or payload.get("document_type")),
-                "fields": payload.get("fields") or payload.get("extracted_data") or {},
-                "metadata": payload.get("metadata") or {},
-            }],
-        )
-
-    raise ValueError("Format JSON non supporté.")
-
-
-def load_ml_model(model_path: str = "curated/anomaly_model.joblib") -> Optional[DocumentAnomalyModel]:
-    path = Path(model_path)
-    if path.exists():
-        return DocumentAnomalyModel.load(str(path))
+def load_ml_model(model_path: Path) -> DocumentAnomalyModel | None:
+    if model_path.exists():
+        return DocumentAnomalyModel.load(str(model_path))
     return None
 
 
-def build_document_anomalies(document_id: str, validation_result: Dict[str, Any]) -> List[Dict[str, Any]]:
-    anomalies = []
+def ensure_ml_model(model_path: Path) -> None:
+    if model_path.exists():
+        return
 
-    for alert in validation_result.get("alerts", []):
-        if document_id in alert.get("documents", []):
-            anomalies.append({
-                "type": alert.get("rule_code"),
-                "severity": str(alert.get("severity", "")).upper(),
-                "description": alert.get("message"),
-                "document_ids": alert.get("documents", []),
-                "details": alert.get("details", {}),
-            })
-
-    return anomalies
+    print(f"[ML] Modèle absent : génération automatique dans {model_path}")
+    generate_training_data()
+    train_model()
+    print("[ML] Modèle entraîné avec succès.")
 
 
-def send_callback_to_backend(batch: BatchInput, validation_result: Dict[str, Any]) -> None:
-    if not INTERNAL_API_SECRET:
-        raise ValueError("INTERNAL_API_SECRET manquant.")
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Validation des JSON OCR stockés dans MinIO"
+    )
 
-    for doc in batch.documents:
-        payload = {
-            "document_id": doc.document_id,
-            "status": "DONE",
-            "document_type": to_backend_doc_type(doc.doc_type),
-            "extracted_data": doc.fields.model_dump(),
-            "anomalies": build_document_anomalies(doc.document_id, validation_result),
-            "error_message": None,
-        }
+    parser.add_argument("--batch-id", type=str, default=None)
+    parser.add_argument("--limit", type=int, default=None)
 
-        response = requests.post(
-            f"{BACKEND_URL}/api/internal/pipeline/result",
-            json=payload,
-            headers={"X-Internal-Secret": INTERNAL_API_SECRET},
-            timeout=10,
+    parser.add_argument(
+        "--document-id",
+        action="append",
+        default=None,
+        help="Filtrer sur un ou plusieurs document_id",
+    )
+    parser.add_argument(
+        "--file-name",
+        action="append",
+        default=None,
+        help="Filtrer sur un ou plusieurs file_name",
+    )
+
+    parser.add_argument(
+        "--input-dir",
+        type=str,
+        default=None,
+        help="Dossier local contenant des JSON OCR à valider",
+    )
+    parser.add_argument(
+        "--source",
+        choices=["minio", "dir"],
+        default="minio",
+        help="Source d'entrée des JSON OCR",
+    )
+
+    parser.add_argument("--minio-endpoint", type=str, default=settings.minio_endpoint)
+    parser.add_argument("--minio-access-key", type=str, default=settings.minio_access_key)
+    parser.add_argument("--minio-secret-key", type=str, default=settings.minio_secret_key)
+    parser.add_argument("--minio-secure", action="store_true", default=settings.minio_secure)
+    parser.add_argument("--minio-bucket", type=str, default=settings.minio_bucket)
+    parser.add_argument("--minio-prefix", type=str, default=settings.minio_curated_prefix)
+    parser.add_argument("--minio-validation-prefix", type=str, default=settings.minio_validation_prefix)
+
+    parser.add_argument(
+        "--disable-insee",
+        action="store_true",
+        help="Désactive la vérification INSEE",
+    )
+    parser.add_argument(
+        "--disable-ml",
+        action="store_true",
+        help="Désactive le modèle ML",
+    )
+    parser.add_argument(
+        "--no-store-minio",
+        dest="store_minio",
+        action="store_false",
+        help="Désactive l'écriture des résultats dans MinIO",
+    )
+    parser.set_defaults(store_minio=True)
+
+    args = parser.parse_args()
+
+    batch_id = args.batch_id or f"batch_validation_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+
+    if args.source == "dir":
+        if not args.input_dir:
+            raise ValueError("Avec --source dir, il faut fournir --input-dir")
+        batch = load_ocr_batch_from_dir(
+            input_dir=Path(args.input_dir),
+            batch_id=batch_id,
+            limit=args.limit,
+            document_ids=args.document_id,
+            file_names=args.file_name,
         )
-        response.raise_for_status()
+    else:
+        batch = load_ocr_batch_from_minio(
+            batch_id=batch_id,
+            limit=args.limit,
+            document_ids=args.document_id,
+            file_names=args.file_name,
+            endpoint=args.minio_endpoint,
+            access_key=args.minio_access_key,
+            secret_key=args.minio_secret_key,
+            secure=args.minio_secure,
+            bucket=args.minio_bucket,
+            prefix=args.minio_prefix,
+        )
 
+    if args.disable_ml:
+        anomaly_model = None
+    else:
+        ensure_ml_model(DEFAULT_MODEL_PATH)
+        anomaly_model = load_ml_model(DEFAULT_MODEL_PATH)
 
-def run(input_path: str, output_path: str, send_backend: bool = False) -> Dict[str, Any]:
-    payload = load_json(input_path)
-    batch = build_batch_input(payload)
-
-    anomaly_model = load_ml_model()
+    if args.disable_insee:
+        insee_client = InseeClient(enabled=False, fallback_to_mock=False)
+    else:
+        insee_client = InseeClient(enabled=True, fallback_to_mock=True)
 
     engine = AnomalyEngine(
-        insee_client=InseeClient(enabled=True, fallback_to_mock=True),
+        insee_client=insee_client,
         anomaly_model=anomaly_model,
         reference_date=datetime.utcnow(),
-        engine_version="1.1.0",
+        engine_version="1.2.0",
     )
 
     result = engine.run(batch)
-    result_dict = result.model_dump()
 
-    save_json(output_path, result_dict)
+    print("\n===== VALIDATION RESULT =====\n")
+    print(result.model_dump_json(indent=2, ensure_ascii=False))
 
-    if send_backend:
-        send_callback_to_backend(batch, result_dict)
+    per_document_results = build_document_validation_results(result, batch)
 
-    return result_dict
+    if args.store_minio:
+        io_client = MinioIO(
+            endpoint=args.minio_endpoint,
+            access_key=args.minio_access_key,
+            secret_key=args.minio_secret_key,
+            secure=args.minio_secure,
+            bucket=args.minio_bucket,
+            input_prefix=args.minio_prefix,
+            validation_prefix=args.minio_validation_prefix,
+        )
 
+        batch_key = io_client.store_batch_validation_result(
+            batch_id=result.batch_id,
+            payload=result.model_dump(),
+        )
+        print(f"Résultat batch stocké dans MinIO : {batch_key}")
 
-def default_output_path(input_path: str) -> str:
-    p = Path(input_path)
-    return str(p.parent / f"{p.stem}_validation_result.json")
+        for doc_payload in per_document_results:
+            doc_key = io_client.store_document_validation_result(
+                document_id=doc_payload["document_id"],
+                payload=doc_payload,
+                batch_id=result.batch_id,
+            )
+            print(f"Résultat document stocké dans MinIO : {doc_key}")
+    else:
+        print("Écriture MinIO désactivée.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input", required=True, help="Chemin du JSON d'entrée")
-    parser.add_argument("--output", help="Chemin du JSON de sortie")
-    parser.add_argument("--send-backend", action="store_true", help="Envoie le callback au backend")
-    args = parser.parse_args()
-
-    output_path = args.output or default_output_path(args.input)
-
-    result = run(
-        input_path=args.input,
-        output_path=output_path,
-        send_backend=args.send_backend,
-    )
-
-    print(json.dumps({
-        "status": "ok",
-        "batch_id": result["batch_id"],
-        "decision": result["decision"],
-        "global_score": result["global_score"],
-        "output_path": output_path,
-    }, ensure_ascii=False, indent=2))
+    main()

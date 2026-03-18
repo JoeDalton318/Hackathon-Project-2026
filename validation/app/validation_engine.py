@@ -26,6 +26,7 @@ from .validation_rules import (
     rule_tva_consistency,
     rule_vat_business_logic,
     rule_document_too_incomplete,
+    rule_document_type_suspect,
 )
 SEVERITY_SCORES = {
     "critical": 40,
@@ -61,6 +62,7 @@ RULE_TO_SIGNAL_CODE = {
     "VAT_TTC_LT_HT": "TTC_INFERIEUR_HT",
     "VAT_ZERO_ON_STANDARD_INVOICE": "TVA_NULLE_A_VERIFIER",
     "DOCUMENT_TOO_INCOMPLETE": "DOCUMENT_TROP_INCOMPLET",
+    "DOCUMENT_TYPE_SUSPECT": "TYPE_DOCUMENT_SUSPECT",
 }
 
 
@@ -82,6 +84,7 @@ class AnomalyEngine:
 
         for doc in batch.documents:
             alerts.extend(rule_missing_required_fields(doc))
+            alerts.extend(rule_document_type_suspect(doc))
             alerts.extend(rule_document_too_incomplete(doc))
             alerts.extend(rule_siret_format(doc))
             alerts.extend(rule_siren_format(doc))
@@ -95,6 +98,7 @@ class AnomalyEngine:
             alerts.extend(rule_rib_format(doc))
             alerts.extend(rule_reference_format(doc))
             alerts.extend(rule_low_confidence_critical_fields(doc))
+            
 
         alerts.extend(rule_siret_exists_insee_batch(batch, self.insee_client))
         alerts.extend(rule_siret_mismatch_across_documents(batch))

@@ -4,251 +4,378 @@ Module de validation intelligente.
 
 ## Objectif
 
-Cette brique intervient après l'OCR et l'extraction des champs structurés.  
-Elle permet de contrôler la conformité et la cohérence de documents administratifs/comptables, puis de produire une décision exploitable par le backend et le frontend :
+Elle consomme les extraction.json déposés dans MinIO, applique des règles de validation métier et produit des résultats exploitables par le 
+backend et le front.
 
-- `approved`
-- `review`
-- `blocked`
+Le moteur produit deux niveaux de sortie :
+
+- un résultat batch
+
+- un résultat par document
+
+---
+
+## Position dans le workflow global
+
+- upload des documents bruts
+
+- stockage des originaux dans MinIO raw
+
+- OCR / extraction 
+
+- stockage des JSON OCR dans curated/.../extraction.json
+
+- lecture de ces JSON par le moteur de validation
+
+- validation unitaire et inter-documents
+
+- stockage des résultats dans MinIO sous curated/validation/...
+
+curated/validation/batches/YYYY/MM/DD/<batch_id>/validation_result.json
+curated/validation/documents/YYYY/MM/DD/<document_id>/validation_result.json
 
 ---
 
-## Principaux contrôles implémentés
+# Entrée 
 
-### Contrôles unitaires
-Le moteur vérifie notamment :
-- le format des identifiants (`SIRET`, `SIREN`, `TVA`)
-- la validité de `IBAN` / `BIC`
-- la cohérence des montants (`HT`, `TVA`, `TTC`)
-- la cohérence des dates
-- les champs obligatoires
-- les documents trop incomplets
-- la faible confiance OCR sur les champs critiques
+Le moteur lit les résultats OCR structurés depuis MinIO.
 
-### Contrôles inter-documents
-Le moteur compare plusieurs documents d’un même batch pour détecter :
-- une incohérence de `SIRET`
-- une incohérence `facture` vs `attestation`
-- une incohérence `facture` vs `RIB`
-- des doublons de facture
-- des incohérences de nom fournisseur
+## Convention d’entrée lue par la validation
 
-### Détection d’anomalies ML
-Le moteur inclut un modèle complémentaire basé sur `IsolationForest`.
 
----
-## Exemple Fonctionnement du process
+curated/YYYY/MM/DD/<document_id>/extraction.json
 
-### Vue d’ensemble
 
-1. l’utilisateur se connecte et upload un ou plusieurs documents depuis le frontend
-2. On stocke chaque fichier brut dans MinIO (`raw`) et crée un `document_id` pour chaque document
-3. tous les documents d’un même utilisateur / même lot d’upload doivent conserver un identifiant commun de regroupement (`batch_id` ou équivalent)
-4. Airflow lance l’OCR et l’extraction sur chaque document
-5. l’OCR / extraction produit un JSON structuré par document
-6. avant la validation, les JSON appartenant au même utilisateur / même lot doivent être regroupés dans un même `batch`
-7. le module de validation lit ce batch via `main.py`
-8. le moteur exécute les contrôles unitaires et inter-documents
-9. le résultat batch complet est sauvegardé dans `curated`
+Chaque `extraction.json` contient notamment :
 
-### la validation par batch
+- document_id  
+- file_name  
+- classification  
+- ocr_metadata  
+- raw_text  
+- bloc typé (facture, rib, attestation_urssaf, etc.)
 
-certaines validations nécessitent plusieurs documents ensemble :
-- facture vs attestation
-- facture vs RIB
-- incohérence de SIRET dans un dossier
-- doublon de facture
+Le module transforme ces JSON OCR en objets internes :
 
-C’est pourquoi le moteur reçoit un batch de documents.
+- `DocumentInput`  
+- `BatchInput`  
 
 ---
-## Entrée attendue
 
-Le moteur attend un objet `BatchInput`, c’est à dire un batch de documents déjà extraits et structurés.
+# Logique de traitement
 
-### Format logique attendu
 
-> ⚠️ Exemple de structure.  
-> Le format exact pourra être ajusté selon la sortie finale OCR / extraction.
+Le moteur traite toujours un **batch** :
 
-```json
+- si 1 document arrive → batch de 1 document  
+- si N documents arrivent ensemble → batch de N documents  
 
-{
-  "batch_id": "batch_001",
-  "documents": [
-    {
-      "document_id": "doc_fact_001",
-      "doc_type": "facture",
-      "fields": {
-        "numero_facture": "FAC-2026-001",
-        "date_facture": "2026-03-10",
-        "date_echeance": "2026-03-25",
-        "fournisseur": {
-          "raison_sociale": "ACME SARL",
-          "siret": "73282932000074",
-          "tva_intracommunautaire": "FR23732829320"
-        },
-        "client": {
-          "raison_sociale": "CLIENT XYZ",
-          "siret": "42385519600014"
-        },
-        "amount_ht": 1000.0,
-        "amount_tva": 200.0,
-        "amount_ttc": 1200.0,
-        "confidence": 0.92
-      },
-      "metadata": {
-        "field_confidence": {
-          "numero_facture": 0.91,
-          "date_facture": 0.89,
-          "siret": 0.83
-        }
-      }
-    }
-  ]
-}
-```
+Cela permet d’avoir une seule logique pour :
+
+- les contrôles documentaires unitaires  
+- les contrôles inter-documents  
+
 ---
 
-## Sortie produite
+# Contrôles implémentés
 
-⚠️ Exemple de sortie.  
-> Le contenu exact peut évoluer selon les besoins d’intégration backend / frontend.
+## Contrôles unitaires
 
-fichier batch complet dans `curated`
+- champs obligatoires  
+- document trop incomplet  
+- format SIRET / SIREN / TVA  
+- format IBAN / BIC  
+- cohérence des montants HT / TVA / TTC  
+- cohérence des dates  
+- attestation expirée  
+- attestation trop ancienne  
+- faible confiance sur champs critiques  
+- suspicion de mauvais type documentaire (`DOCUMENT_TYPE_SUSPECT`)  
 
-par exemple :
+---
 
-```text
-curated/batch_001_validation_result.json
-```
+## Contrôles inter-documents
 
-```json
+- incohérence de SIRET dans un groupe  
+- incohérence facture / attestation  
+- incohérence facture / RIB  
+- incohérence de nom fournisseur  
+- suspicion de doublon de facture  
 
-{
-  "batch_id": "batch_001",
-  "status": "completed",
-  "validated_at": "2026-03-17T12:00:00",
-  "engine_version": "1.1.0",
-  "global_score": 240,
-  "decision": "blocked",
-  "alerts": [
-    {
-      "rule_code": "TVA_INVALID",
-      "severity": "high",
-      "message": "Le numéro de TVA est invalide ou incohérent avec le SIREN.",
-      "documents": [
-        "doc_fact_001"
-      ],
-      "details": {
-        "tva_number": "FR99732829320",
-        "siren": "732829320"
-      }
-    },
-  ],
-  "signals": [
-    {
-      "code": "TVA_INCOHERENTE",
-      "message": "Le numéro de TVA est invalide ou incohérent avec le SIREN.",
-      "champ": null,
-      "valeur": "FR99732829320",
-      "document_id": "doc_fact_001"
-    },
-    ],
-  "summary": {
-    "critical": 0,
-    "high": 7,
-    "medium": 3,
-    "low": 7
-  },
-  "batch_stats": {
-    "documents_total": 4,
-    "documents_with_alerts": 4,
-    "groups_total": 3
-  },
-  "blocking_reasons": [
-    "DATE_EXPIRATION_DEPASSEE",
-    "DOCUMENT_TOO_INCOMPLETE",
-    "IBAN_INVALID",
-    "SIRET_INVALID",
-    "TVA_INVALID",
-    "VAT_NEGATIVE_AMOUNT",
-    "VAT_TTC_LT_HT"
-  ]
-}
+---
 
-```
+## Contrôle externe
 
-### Ce fichier contient :
+- vérification avec l'API INSEE / SIRENE 
 
-- `decision`
-- `global_score`
-- `alerts`
-- `signals`
-- `summary`
-- `batch_stats`
-- `blocking_reasons`
+---
+
+## Contrôle ML
+
+- modèle `IsolationForest` 
+
+---
+
+# Sorties produites
+
+Le moteur produit :
+
+## 1. Résultat batch
+
+Un JSON global de validation :
+
+
+curated/validation/batches/YYYY/MM/DD/<batch_id>/validation_result.json
+
+
+## 2. Résultat par document
+
+Un JSON par document :
+
+
+curated/validation/documents/YYYY/MM/DD/<document_id>/validation_result.json
 
 
 ---
 
-## Fichiers principaux
+# Structure du résultat batch
 
-### `main.py`
-Point d’entrée d’intégration.
+Le résultat batch contient notamment :
+
+- batch_id  
+- status  
+- validated_at  
+- engine_version  
+- global_score  
+- decision  
+- alerts  
+- signals  
+- summary  
+- batch_stats  
+- blocking_reasons  
+
+---
+
+# Structure du résultat document
+
+Chaque résultat document contient notamment :
+
+- document_id  
+- batch_id  
+- validated_at  
+- engine_version  
+- document_type  
+- predicted_document_type  
+- suspected_document_type  
+- decision  
+- alerts  
+- signals  
+- summary  
+- extracted_data  
+- source  
+
+Le champ `source.source_extraction_key` permet de relier un résultat de validation au `extraction.json` d’origine.
+
+---
+
+# Décisions métier
+
+Le moteur renvoie :
+
+- `approved`  
+- `review`  
+- `blocked`  
+
+## Interprétation
+
+- **approved** : aucune anomalie bloquante  
+- **review** : document à revoir humainement  
+- **blocked** : anomalie bloquante ou risque fort  
+
+---
+
+# Fichiers principaux
+
+## main.py
+
+Point d’entrée CLI.
+
 Il :
-- lit le JSON d’entrée
-- construit le `BatchInput`
-- lance le moteur de validation
-- écrit le résultat batch dans `curated`
 
-### `app/models.py`
-Définit les schémas Pydantic utilisés par le moteur :
-- `BatchInput`
-- `DocumentInput`
-- `DocumentFields`
-- `Alert`
-- `Signal`
-- `ValidationResult`
+- lit les JSON OCR depuis MinIO 
+- construit le `BatchInput`  
+- lance la validation  
+- produit les résultats batch + document  
+- stocke les résultats dans MinIO `--store-minio`  
 
-### `app/validation_core.py`
-Contient les fonctions utilitaires :
-- normalisation des textes
-- parsing des dates
-- validation de formats
-- similarité
-- regroupement documentaire
+---
 
-### `app/validation_rules.py`
-Contient l’ensemble des règles métier unitaires et inter-documents.
+## app/ocr_adapter.py
 
-### `app/validation_engine.py`
-Orchestre la validation :
-- exécution des règles
-- fusion des alertes
-- calcul du score
-- décision finale
-- construction des signaux
-- construction des `blocking_reasons`
+Transforme les `extraction.json` OCR en objets internes `DocumentInput`.
 
-### `app/insee_client.py`
-Gère la vérification des SIRET via l’API SIRENE / INSEE avec fallback mock.
+---
 
-### `app/anomaly_model.py`
-Gère le modèle `IsolationForest` :
-- extraction de features
-- entraînement
-- chargement
-- détection d’anomalies
+## app/minio_io.py
 
-### `tests/fixtures/`
-Jeux de tests JSON :
-- batch valide
-- batch invalide
-- cas API SIRENE indisponible
+Centralise :
 
-### `tests/prepare_ml_data.py`
-Génère des données synthétiques pour entraîner le modèle ML.
+- lecture des JSON OCR dans MinIO  
+- écriture des résultats de validation dans MinIO  
 
-### `tests/run_all.py`
-Exécute les scénarios de test fournis (`valid`, `invalid`, `api unavailable`) et génère les résultats de validation dans `curated`.
+---
+
+## app/models.py
+
+Schémas Pydantic :
+
+- `BatchInput`  
+- `DocumentInput`  
+- `DocumentFields`  
+- `Alert`  
+- `Signal`  
+- `ValidationResult`  
+
+---
+
+## app/validation_core.py
+
+Fonctions utilitaires :
+
+- normalisation  
+- parsing  
+- checksum  
+- regroupement documentaire  
+- similarité  
+
+---
+
+## app/validation_rules.py
+
+Règles métier unitaires et inter-documents.
+
+---
+
+## app/validation_engine.py
+
+Orchestrateur de validation.
+
+---
+
+## app/result_formatter.py
+
+Construit les résultats documentaires à partir du résultat batch.
+
+---
+
+## app/insee_client.py
+
+Accès à l’API INSEE / SIRENE.
+
+---
+
+## app/anomaly_model.py
+
+Gestion du modèle ML :
+
+entraînement
+
+sauvegarde / chargement
+
+analyse d’anomalies
+---
+
+## app/prepare_ml_data.py
+
+Prépare des données pour entraîner le modèle ML de validation.
+
+---
+
+## app/settings.py
+
+Centralise la lecture des variables d’environnement.
+
+---
+
+## Structure du dossier
+
+validation/
+├── app/
+│   ├── anomaly_model.py
+│   ├── insee_client.py
+│   ├── minio_io.py
+│   ├── models.py
+│   ├── ocr_adapter.py
+│   ├── result_formatter.py
+│   ├── settings.py
+│   ├── validation_core.py
+│   ├── validation_engine.py
+│   ├── validation_rules.py
+│   ├── prepare_ml_data.py
+├── tests/
+│   ├── fixtures/
+│   │   ├── valid_batch.json
+│   │   ├── invalid_batch.json
+│   │   └── api_unavailable_batch.json
+│   └── run_all.py
+├── .env
+├── .env_example
+├── Dockerfile
+├── main.py
+└── requirements.txt
+
+# Tests
+
+## 1. Tests fonctionnels
+
+Les scénarios de test sont dans :
+
+
+tests/fixtures/
+
+
+### Fichiers disponibles :
+
+- `valid_batch.json`  
+- `invalid_batch.json`  
+- `api_unavailable_batch.json`  
+
+Le script :
+
+
+tests/run_all.py
+
+
+permet d’exécuter tous les scénarios.
+
+### Lancer les tests
+
+```bash
+python tests/run_all.py
+
+Ce script :
+
+charge les fixtures JSON
+
+construit les BatchInput
+
+lance la validation
+
+affiche les résultats
+
+permet de vérifier rapidement les décisions et alertes attendues
+```
+
+2. Test du moteur sur MinIO réel
+
+Pré-requis :
+
+MinIO démarré
+
+des extraction.json présents dans :
+
+curated/.../.../.../extraction.json
+
+Lancer :
+
+python main.py

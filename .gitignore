@@ -18,6 +18,7 @@ env/
 venv/
 ml_train_normal/
 anomaly_model.joblib
+artifacts
 
 # IDEs
 .idea
