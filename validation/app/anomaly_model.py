@@ -139,7 +139,7 @@ class DocumentAnomalyModel:
         self.model.fit(X)
         self.is_fitted = True
 
-    def save(self, filepath: str = "curated/anomaly_model.joblib") -> None:
+    def save(self, filepath: str = "artifacts/anomaly_model.joblib") -> None:
         Path(filepath).parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(
             {
@@ -153,7 +153,7 @@ class DocumentAnomalyModel:
         )
 
     @classmethod
-    def load(cls, filepath: str = "curated/anomaly_model.joblib") -> "DocumentAnomalyModel":
+    def load(cls, filepath: str = "artifacts/anomaly_model.joblib") -> "DocumentAnomalyModel":
         payload = joblib.load(filepath)
         obj = cls(
             contamination=payload.get("contamination", 0.10),

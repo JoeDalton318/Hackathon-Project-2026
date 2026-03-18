@@ -132,8 +132,8 @@ def gen_facture_pdf(emetteur: dict, client: dict, falsified: bool = False) -> by
         desc = fake.bs().capitalize()[:48]; qty = random.randint(1, 8)
         pu   = round(random.uniform(100, 3000), 2); lht = round(qty * pu, 2); total_ht += lht
         pdf.cell(90, 7, desc, border=1); pdf.cell(20, 7, str(qty), border=1, align="C")
-        pdf.cell(30, 7, f"{pu:,.2f} €".replace(",", " "), border=1, align="R")
-        pdf.cell(30, 7, f"{lht:,.2f} €".replace(",", " "), border=1, align="R"); pdf.ln()
+        pdf.cell(30, 7, f"{pu:,.2f} EUR".replace(",", " "), border=1, align="R")
+        pdf.cell(30, 7, f"{lht:,.2f} EUR".replace(",", " "), border=1, align="R"); pdf.ln()
 
     total_tva = round(total_ht * taux / 100, 2); total_ttc = round(total_ht + total_tva, 2)
     display_siret = emetteur["siret"]
@@ -142,18 +142,18 @@ def gen_facture_pdf(emetteur: dict, client: dict, falsified: bool = False) -> by
         display_siret = "".join(chars)
 
     pdf.ln(4); pdf.set_font("Helvetica", "", 10)
-    for lbl, val in [(f"Montant HT", f"{total_ht:,.2f} €".replace(",", " ")),
-                     (f"TVA ({taux}%)", f"{total_tva:,.2f} €".replace(",", " "))]:
+    for lbl, val in [(f"Montant HT", f"{total_ht:,.2f} EUR".replace(",", " ")),
+                     (f"TVA ({taux}%)", f"{total_tva:,.2f} EUR".replace(",", " "))]:
         pdf.cell(140, 7, ""); pdf.cell(0, 7, f"{lbl} : {val}", ln=True)
     pdf.set_font("Helvetica", "B", 11); pdf.cell(140, 8, "")
-    pdf.cell(0, 8, f"Total TTC : {total_ttc:,.2f} €".replace(",", " "), ln=True)
+    pdf.cell(0, 8, f"Total TTC : {total_ttc:,.2f} EUR".replace(",", " "), ln=True)
 
     pdf.ln(8); pdf.set_font("Helvetica", "B", 10); pdf.cell(0, 6, "Coordonnées bancaires :", ln=True)
     pdf.set_font("Helvetica", "", 9)
     pdf.cell(0, 5, f"IBAN : {emetteur['iban']}", ln=True)
     pdf.cell(0, 5, f"BIC  : {emetteur['bic']}",  ln=True)
     pdf.cell(0, 5, f"SIRET : {display_siret}",    ln=True)
-    return pdf.output(dest="S").encode("latin-1")
+    return bytes(pdf.output())
 
 
 def gen_urssaf_pdf(company: dict, expired: bool = False) -> bytes:
@@ -179,7 +179,7 @@ def gen_urssaf_pdf(company: dict, expired: bool = False) -> bytes:
     pdf.set_font("Helvetica", "I", 9)
     pdf.multi_cell(0, 5, f"Document valide du {d_em.strftime('%d/%m/%Y')} au {d_exp.strftime('%d/%m/%Y')}. "
                   "Vérifiable sur net-entreprises.fr")
-    return pdf.output(dest="S").encode("latin-1")
+    return bytes(pdf.output())
 
 
 def gen_rib_pdf(company: dict) -> bytes:
@@ -191,7 +191,7 @@ def gen_rib_pdf(company: dict) -> bytes:
                  "", "Domiciliation : BNP Paribas",
                  f"IBAN : {company['iban']}", f"BIC  : {company['bic']}"]:
         pdf.cell(0, 7, line, ln=True)
-    return pdf.output(dest="S").encode("latin-1")
+    return bytes(pdf.output())
 
 
 # ── Dégradation d'image ──────────────────────────────────────────────────────

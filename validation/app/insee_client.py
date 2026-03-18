@@ -1,6 +1,6 @@
 import os
 from typing import Any, Dict, Optional
-
+from .settings import settings
 import requests
 
 
@@ -15,8 +15,8 @@ class InseeClient:
     ):
         self.enabled = enabled
         self.fallback_to_mock = fallback_to_mock
-        self.base_url = base_url or os.getenv("INSEE_BASE_URL", "https://api.insee.fr/api-sirene/3.11")
-        self.api_key = api_key or os.getenv("INSEE_API_KEY")
+        self.base_url = base_url or settings.insee_base_url
+        self.api_key = api_key or settings.insee_api_key
 
     def get_establishment(self, siret: str) -> Dict[str, Any]:
         if not self.enabled or not self.api_key:

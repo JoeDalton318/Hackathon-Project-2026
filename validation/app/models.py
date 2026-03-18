@@ -79,6 +79,11 @@ class DocumentFields(BaseModel):
     type_tva: Optional[str] = None
     confidence: Optional[float] = None
 
+    raw_text: Optional[str] = None
+    file_name: Optional[str] = None
+    classification_confidence: Optional[float] = None
+    ocr_confidence: Optional[float] = None
+
     fournisseur: Optional[Party] = None
     client: Optional[Party] = None
     emetteur: Optional[Party] = None
