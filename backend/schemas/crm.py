@@ -3,9 +3,9 @@ from pydantic import BaseModel
 
 class SupplierOut(BaseModel):
     siret: str
-    raison_sociale: str | None = None
+    supplier_name: str | None = None
     iban: str | None = None
-    adresse: str | None = None
-    tva_intracommunautaire: str | None = None
-    conformite_status: str | None = None
+    address: str | None = None
+    tva_number: str | None = None
+    decision: str | None = None
     documents: list[dict] = []
