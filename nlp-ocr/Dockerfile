@@ -27,11 +27,13 @@ RUN python -m spacy download fr_core_news_md
 COPY . .
 RUN pip install --no-cache-dir -e .
 
+# ✅ APRÈS — aucun credential en clair
 ENV PYTHONUNBUFFERED=1 \
     LOG_LEVEL=INFO \
-    MINIO_ENDPOINT=minio:9000 \
-    MINIO_ACCESS_KEY=minioadmin \
-    MINIO_SECRET_KEY=minioadmin123
+    MINIO_ENDPOINT="" \
+    MINIO_ACCESS_KEY="" \
+    MINIO_SECRET_KEY="" \
+    MINIO_SECURE="false"
 
 EXPOSE 8000
 
