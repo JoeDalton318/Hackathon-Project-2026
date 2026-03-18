@@ -30,8 +30,8 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
                     ┌─────────────┐             │
                     │  MongoDB    │             │
                     │  documents  │             │
-                    │  (statut:   │             │
-                    │  en_attente)│             │
+                    │  (status:   │             │
+                    │  pending)   │             │
                     └──────┬──────┘             │
                            │                    │
                            │ 2. Déclenche       │
@@ -51,10 +51,10 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
                     ┌─────────────┐     ┌─────────────┐
                     │  MongoDB    │     │  MinIO      │
                     │  documents  │     │  (Silver)   │
-                    │  (statut:   │     │  ocr.txt,   │
-                    │  termine,   │     │  extraction │
-                    │  resultat_  │     │  .json      │
-                    │  extraction)│     └─────────────┘
+                    │  (status:   │     │  ocr.txt,   │
+                    │  done,      │     │  extraction │
+                    │  extracted_ │     │  .json      │
+                    │  data)      │     └─────────────┘
                     └──────┬──────┘
                            │
                            │ 5. Le frontend lit
@@ -72,13 +72,13 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 
 | Étape | Qui | Quoi |
 |-------|-----|------|
-| 1 | Backend | Reçoit l’upload, stocke le fichier dans **MinIO (Bronze)** et crée un document dans **MongoDB** (`documents`) avec `statut_traitement: "en_attente"`. |
+| 1 | Backend | Reçoit l’upload, stocke le fichier dans **MinIO (Bronze)** et crée un document dans **MongoDB** (`documents`) avec `status: "pending"`. |
 | 2 | Backend | Déclenche le **DAG Airflow** (traitement asynchrone). |
 | 3 | Pipeline (Airflow) | Lit le fichier depuis MinIO Bronze, fait **OCR → IA (classification) → Validation** (Sirene, inter-documents). |
-| 4 | Pipeline | Écrit les résultats dans **MinIO (Silver)** (ocr.txt, extraction.json) et met à jour le document dans **MongoDB** : `statut_traitement: "termine"`, `resultat_extraction`, `type_document_extrait`, etc. |
+| 4 | Pipeline | Écrit les résultats dans **MinIO (Silver)** (ocr.txt, extraction.json) et met à jour le document dans **MongoDB** : `status: "done"`, `extracted_data`, `document_type`, `anomalies`, etc. |
 | 5 | Frontend | Appelle l’API pour récupérer la liste et le détail des documents ; l’API lit dans **MongoDB** (et peut servir le fichier depuis MinIO). |
 
-**MongoDB** sert à stocker les **métadonnées** et le **résultat d’extraction** (type de document, champs métier, signales). Les **fichiers** et le **texte OCR** sont dans **MinIO** (Bronze = brut, Silver = traité).
+**MongoDB** sert à stocker les **métadonnées** et le **résultat d’extraction** (`extracted_data`, `anomalies`). Les **fichiers** et le **texte OCR** sont dans **MinIO** (Bronze = brut, Silver = traité).
 
 ---
 
@@ -86,14 +86,16 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 
 ### 3.1 Collection `users`
 
-**Rôle :** Stocker les **utilisateurs** qui se connectent à l’application (auth, propriétaire des documents).
+**Rôle :** Stocker les **utilisateurs** qui se connectent à l’application (auth, propriétaire des documents). Clé métier : `user_id` (UUID string).
 
 | Champ | Type | Description |
 |-------|------|-------------|
 | `_id` | ObjectId | Identifiant unique (généré par MongoDB). |
+| `user_id` | string | UUID, identifiant métier (référencé par `documents.user_id`). |
 | `email` | string | Email de connexion (unique). |
-| `password_hash` | string | Mot de passe hashé (jamais en clair). |
+| `hashed_password` | string | Mot de passe hashé (jamais en clair). |
 | `nom` | string | Nom affiché (optionnel). |
+| `role` | string | `"user"` ou `"admin"`. |
 | `created_at` | Date | Date de création du compte. |
 
 **Utilisation :** Connexion (auth), association des documents à un utilisateur (`user_id` dans `documents`).
@@ -102,138 +104,97 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 
 ### 3.2 Collection `documents`
 
-**Rôle :** Une entrée = **un fichier uploadé** + son **statut de traitement** + le **résultat d’extraction** (type de document, données structurées, signales). C’est le cœur métier pour l’affichage et la recherche.
+**Rôle :** Une entrée = **un fichier uploadé** + son **statut de traitement** + le **résultat d’extraction** (type de document, données structurées, anomalies). Clé métier : `document_id` (UUID string).
 
 | Champ | Type | Description |
 |-------|------|-------------|
 | `_id` | ObjectId | Identifiant unique du document. |
-| `user_id` | ObjectId | Référence vers `users._id` (propriétaire). |
-| `nom_fichier_original` | string | Nom du fichier tel qu’uploadé. |
-| `type_mime` | string | Ex. `application/pdf`, `image/png`. |
-| `chemin_minio_bronze` | string | Chemin du fichier brut dans MinIO (zone Raw). |
-| `chemin_minio_silver` | string | Dossier Silver (ocr.txt, extraction.json, etc.). |
-| `statut_traitement` | string | `"en_attente"`, `"en_cours"`, `"termine"`, `"erreur"`. |
-| `job_id` | string | Référence au job Airflow (optionnel). |
-| `type_document_extrait` | string | Type détecté : `facture`, `devis`, `avoir`, `attestation_siret`, etc. |
-| `resultat_extraction` | object | JSON renvoyé par l’IA + signales (type, données, signales). |
-| `texte_ocr` | string | Texte OCR brut (optionnel si déjà dans MinIO). |
+| `document_id` | string | UUID, identifiant métier (utilisé par l’API). |
+| `user_id` | string | Référence vers `users.user_id` (propriétaire). |
+| `original_filename` | string | Nom du fichier tel qu’uploadé. |
+| `mime_type` | string | Ex. `application/pdf`, `image/png`. |
+| `minio_path` | string | Chemin du fichier dans MinIO (Bronze ou Silver selon convention). |
+| `status` | string | `"pending"`, `"processing"`, `"ocr_done"`, `"extraction_done"`, `"done"`, `"error"`. |
+| `document_type` | string | Type détecté : `facture`, `devis`, `kbis`, `rib`, `attestation_urssaf`, `attestation_siret`, `unknown`. |
+| `extracted_data` | object | Données structurées extraites par l’IA. |
+| `anomalies` | array | Liste des anomalies / signales. |
 | `created_at` | Date | Date de création de l’entrée. |
 | `updated_at` | Date | Dernière mise à jour (après traitement). |
 
 **Utilisation :**  
 - Backend : créer un document à l’upload, mettre à jour après le pipeline.  
-- API : lister les documents d’un utilisateur, renvoyer le détail (dont `resultat_extraction`) pour l’affichage 50 % document / 50 % résultat.  
-- Les **fichiers** eux-mêmes sont lus depuis **MinIO** via les chemins `chemin_minio_bronze` et `chemin_minio_silver`.
+- API : lister les documents d’un utilisateur, renvoyer le détail (dont `extracted_data`, `anomalies`) pour l’affichage.  
+- Les **fichiers** sont lus depuis **MinIO** via le champ `minio_path`.
 
 ---
 
-## 4. Architecture MinIO – Bronze / Silver / Gold (précision)
+## 4. Architecture MinIO – alignée backend (Raw / Clean / Curated)
 
-Data Lake en **3 zones** (Medallion). À utiliser de façon **stricte** par le backend et le pipeline.
+Le backend utilise **3 buckets MinIO** configurés via les variables d’environnement (voir `backend/app/config.py`) : **RAW**, **CLEAN**, **CURATED**. Création au démarrage via `database/minio.py` → `init_buckets()`.
 
-### 4.1 Stratégie des buckets
-
-- **Option A (recommandée)** : un seul bucket MinIO (ex. `hackathon-datalake`) avec des **préfixes** :
-  - `bronze/`
-  - `silver/`
-  - `gold/`
-- **Option B** : trois buckets séparés : `bronze`, `silver`, `gold`.
-
-Les chemins ci‑dessous sont relatifs au bucket (ou au préfixe).
+| Variable d’environnement   | Rôle (équivalent Medallion) |
+|---------------------------|-----------------------------|
+| `MINIO_BUCKET_RAW`        | Zone Raw – fichiers bruts uploadés. |
+| `MINIO_BUCKET_CLEAN`      | Zone Clean – résultats par document (OCR, extraction). |
+| `MINIO_BUCKET_CURATED`    | Zone Curated – agrégations, exports (CRM, conformité). |
 
 ---
 
-### 4.2 Zone Bronze (Raw) – documents bruts
+### 4.1 Zone Raw – documents bruts (implémentée)
 
 **Rôle :** Stocker les fichiers **tels qu’uploadés**, sans transformation.
 
-**Convention de chemin :**
-```
-bronze/uploads/{user_id}/{batch_id}/{filename}
-```
+**Bucket :** `MINIO_BUCKET_RAW`.
 
-| Élément | Description |
-|--------|-------------|
-| `user_id` | ID de l’utilisateur (ex. ObjectId MongoDB ou string). |
-| `batch_id` | ID du lot d’upload (ex. UUID ou date-heure) pour grouper les fichiers d’un même envoi. |
-| `filename` | Nom du fichier original (gérer les doublons : suffixe ou UUID si besoin). |
+**Clé d’objet (convention backend actuelle) :**
+```
+{document_id}/{filename}
+```
+- `document_id` : UUID du document (clé métier dans MongoDB).
+- `filename` : nom du fichier original.
 
 **Exemple :**
 ```
-bronze/uploads/507f1f77bcf86cd799439011/batch_20260316_143022/facture-fournisseur.pdf
+a1b2c3d4-e5f6-7890-abcd-ef1234567890/facture-2026-001.pdf
 ```
 
-**Contenu :** Fichier binaire seul (PDF, PNG, JPG, etc.). Aucune modification.
+**MongoDB :** Le champ `documents.minio_path` contient **cette clé uniquement** (sans nom de bucket). L’API génère des URLs de téléchargement via **presigned URL** sur le bucket RAW avec cette clé.
 
-**Qui écrit :** Backend (FastAPI) à l’upload.  
-**Qui lit :** Pipeline (Airflow) pour lancer OCR et extraction.
+**Qui écrit :** Backend (FastAPI) à l’upload (`minio_service.upload_raw`).  
+**Qui lit :** Backend (presigned URL pour le frontend) ; pipeline (Airflow) pour lire le fichier et lancer OCR/extraction.
 
 ---
 
-### 4.3 Zone Silver (Clean) – résultats par document
+### 4.2 Zone Clean – résultats par document (prévue)
 
-**Rôle :** Stocker, **par document traité**, le fichier d’origine (ou copie), les artefacts du pipeline (image améliorée, OCR, JSON d’extraction).
+**Rôle :** Stocker, **par document traité**, les artefacts du pipeline (OCR, extraction, etc.).  
+**Bucket :** `MINIO_BUCKET_CLEAN`. Créé par `init_buckets()`, non encore utilisé par le backend pour l’upload ou les presigned URLs.
 
-**Convention de chemin (dossier par document) :**
-```
-silver/processed/{user_id}/{doc_id}/
-```
+**Convention envisagée (à valider avec le pipeline) :** par exemple `{document_id}/original.pdf`, `{document_id}/ocr.txt`, `{document_id}/extraction.json`, etc. Le backend pourra ensuite mettre à jour `documents.minio_path` vers une clé dans CLEAN si besoin, ou gérer un second champ dédié.
 
-Dans ce dossier, les **fichiers attendus** :
-
-| Fichier | Description |
-|---------|-------------|
-| `original.pdf` ou `original.png` | Copie du fichier source (ou même nom que l’original). |
-| `improved.png` | Image améliorée (prétraitement) utilisée pour l’OCR. |
-| `ocr.txt` | Texte brut extrait par l’OCR. |
-| `extraction.json` | JSON renvoyé par l’IA (type + données) + éventuels signales (identique à `resultat_extraction` en MongoDB). |
-
-**Exemple :**
-```
-silver/processed/507f1f77bcf86cd799439011/674abc123def456789012345/
-├── original.pdf
-├── improved.png
-├── ocr.txt
-└── extraction.json
-```
-
-**Contenu :** Données “propres” et structurées **par document** (clean zone).
-
-**Qui écrit :** Pipeline (Airflow) après OCR, IA et validation.  
-**Qui lit :** Backend (API) pour servir le fichier / l’OCR / l’extraction au frontend.
-
-Dans MongoDB, le champ `documents.chemin_minio_silver` doit contenir ce **dossier** (ex. `silver/processed/{user_id}/{doc_id}/`) ou le chemin du bucket complet, selon comment le backend résout les URLs MinIO.
+**Qui écrit :** Pipeline (Airflow) après OCR et extraction.  
+**Qui lit :** Backend (API) pour servir fichiers / OCR / extraction au frontend (à implémenter si besoin).
 
 ---
 
-### 4.4 Zone Gold (Curated) – agrégations pour CRM / conformité
+### 4.3 Zone Curated – agrégations (prévue)
 
-**Rôle :** Données **agrégées ou dérivées** pour les 2 applications métier (CRM, outil conformité), prêtes pour l’auto-remplissage par l’IA.
+**Rôle :** Données **agrégées ou dérivées** pour CRM et conformité.  
+**Bucket :** `MINIO_BUCKET_CURATED`. Créé par `init_buckets()`, réservé pour jobs Airflow ou API futures.
 
-**Convention (à définir selon les besoins) :**
-```
-gold/exports/{type}/{date ou critère}/
-gold/by_fournisseur/{siret ou id}/
-gold/attestations/
-...
-```
-
-**Contenu typique :** Fichiers Parquet/JSON agrégés, listes fournisseurs, attestations avec dates d’expiration, etc. (optionnel pour la première version).
-
-**Qui écrit :** Job Airflow ou API après traitement.  
-**Qui lit :** Applications CRM et conformité (MERN).
+**Convention :** À définir (ex. exports par type, par fournisseur, attestations, etc.).
 
 ---
 
-### 4.5 Récapitulatif
+### 4.4 Récapitulatif
 
-| Zone | Préfixe / bucket | Chemin type | Contenu |
-|------|-------------------|-------------|---------|
-| **Bronze (Raw)** | `bronze/` | `bronze/uploads/{user_id}/{batch_id}/{filename}` | Fichier brut unique. |
-| **Silver (Clean)** | `silver/` | `silver/processed/{user_id}/{doc_id}/` + `original.*`, `improved.png`, `ocr.txt`, `extraction.json` | Dossier par document avec 4 artefacts. |
-| **Gold (Curated)** | `gold/` | À définir (ex. `gold/exports/`, `gold/by_fournisseur/`) | Agrégations, exports. |
+| Zone   | Variable env           | Usage actuel backend                         |
+|--------|------------------------|----------------------------------------------|
+| **Raw**   | `MINIO_BUCKET_RAW`    | Upload : `{document_id}/{filename}` ; presigned URL. |
+| **Clean** | `MINIO_BUCKET_CLEAN`  | Bucket créé ; usage à définir (pipeline).   |
+| **Curated** | `MINIO_BUCKET_CURATED` | Bucket créé ; usage à définir (exports).   |
 
-MongoDB ne stocke **pas** les fichiers ; il stocke les **chemins** (`chemin_minio_bronze`, `chemin_minio_silver`) et la **copie** du résultat d’extraction dans `resultat_extraction` pour recherche et affichage.
+MongoDB ne stocke **pas** les fichiers ; il stocke la **clé d’objet** dans `minio_path` (zone Raw aujourd’hui) et les données structurées dans `extracted_data` et `anomalies`.
 
 ---
 
@@ -242,7 +203,7 @@ MongoDB ne stocke **pas** les fichiers ; il stocke les **chemins** (`chemin_mini
 | Fichier | Description |
 |---------|--------------|
 | `README.md` | Ce fichier : flux de données, rôle des collections, **architecture Bronze/Silver/Gold détaillée** (section 4). |
-| `schemas/collections.md` | **Schéma complet** des collections (aligné avec docs/DONNEES.md). |
+| `schemas/collections.md` | **Schéma complet** des collections (aligné avec le backend FastAPI). |
 | `scripts/init_mongodb.py` | **Script Python** : vérifie la connexion, crée les collections et les index (voir section 6). |
 | `scripts/requirements.txt` | Dépendances du script Python (`pymongo`, `python-dotenv`). |
 | `init-scripts/02-mongodb-indexes.js` | Script JS pour créer les index (alternative avec `mongosh`). |
@@ -278,6 +239,6 @@ Le script affiche si la connexion est OK, crée les collections si besoin, puis 
 ## 7. Index recommandés (performance)
 
 - **`users`** : index unique sur `email`.  
-- **`documents`** : index sur `user_id`, `statut_traitement`, `created_at` pour les listes et filtres.
+- **`documents`** : index sur `user_id` + `created_at`, `status`, `user_id` + `status` pour les listes et filtres.
 
-Créés automatiquement par `scripts/init_mongodb.py` (ou manuellement avec `init-scripts/02-mongodb-indexes.js`).
+Créés automatiquement par `scripts/init_mongodb.py` (ou manuellement avec `init-scripts/02-mongodb-indexes.js`). Le nom de la base peut être défini via la variable d’environnement `MONGO_DB` (défaut : `hackathon`) pour rester aligné avec le backend.

@@ -35,7 +35,7 @@ if load_dotenv:
     load_dotenv(os.path.join(PARENT_DIR, ".env"))
     load_dotenv(os.path.join(SCRIPT_DIR, ".env"))
 
-DB_NAME = "hackathon"
+DB_NAME = os.environ.get("MONGO_DB", "hackathon")
 COLLECTION_USERS = "users"
 COLLECTION_DOCUMENTS = "documents"
 
@@ -79,11 +79,11 @@ def create_indexes(db):
     db[COLLECTION_USERS].create_index([("email", 1)], unique=True)
     print("  Index users: email (unique) créé ou déjà présent.")
 
-    # documents: user_id + created_at, statut_traitement, user_id + statut_traitement
-    db[COLLECTION_DOCUMENTS].create_index([("user_id", 1), ("created_at", -1)])
-    db[COLLECTION_DOCUMENTS].create_index([("statut_traitement", 1)])
-    db[COLLECTION_DOCUMENTS].create_index([("user_id", 1), ("statut_traitement", 1)])
-    print("  Index documents: user_id+created_at, statut_traitement, user_id+statut_traitement créés ou déjà présents.")
+    # documents: user_id + created_at, status, user_id + status (aligné backend)
+    db[COLLECTION_DOCUMENTS].create_index([("user_id", 1), ("created_at", 1)])
+    db[COLLECTION_DOCUMENTS].create_index([("status", 1)])
+    db[COLLECTION_DOCUMENTS].create_index([("user_id", 1), ("status", 1)])
+    print("  Index documents: user_id+created_at, status, user_id+status créés ou déjà présents.")
 
 
 def main():

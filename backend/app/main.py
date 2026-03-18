@@ -8,7 +8,7 @@ from schemas.response import APIError
 from app.config import settings
 from core.logging import setup_logging
 
-# from database.minio import init_buckets
+from database.minio import init_buckets
 from database.mongo import close_mongo, connect_mongo, create_indexes
 from routers import compliance, crm, documents, pipeline, ws, auth
 
@@ -18,7 +18,8 @@ async def lifespan(app: FastAPI):
     setup_logging()
     await connect_mongo()
     await create_indexes()
-    # init_buckets()
+    # Créer les buckets MinIO (RAW, CLEAN, CURATED) s’ils n’existent pas, pour éviter des erreurs au premier upload
+    init_buckets()
     yield
     await close_mongo()
 

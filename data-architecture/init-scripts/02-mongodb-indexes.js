@@ -10,9 +10,9 @@ db = db.getSiblingDB("hackathon");
 // --- users ---
 db.users.createIndex({ email: 1 }, { unique: true });
 
-// --- documents ---
-db.documents.createIndex({ user_id: 1, created_at: -1 });
-db.documents.createIndex({ statut_traitement: 1 });
-db.documents.createIndex({ user_id: 1, statut_traitement: 1 });
+// --- documents (aligné backend) ---
+db.documents.createIndex({ user_id: 1, created_at: 1 });
+db.documents.createIndex({ status: 1 });
+db.documents.createIndex({ user_id: 1, status: 1 });
 
 print("Index créés avec succès.");
