@@ -128,73 +128,77 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 
 ---
 
-## 4. Architecture MinIO – alignée backend (Raw / Clean / Curated)
+## 4. Architecture MinIO – un bucket partagé (datalake) + préfixes
 
-Le backend utilise **3 buckets MinIO** configurés via les variables d’environnement (voir `backend/app/config.py`) : **RAW**, **CLEAN**, **CURATED**. Création au démarrage via `database/minio.py` → `init_buckets()`.
+**Backend, OCR et validation** utilisent la **même instance MinIO** : un seul bucket (`datalake`) avec des **préfixes** pour les couches Raw, Clean et Curated. Connexion via les variables du `.env` à la racine du projet.
 
-| Variable d’environnement   | Rôle (équivalent Medallion) |
-|---------------------------|-----------------------------|
-| `MINIO_BUCKET_RAW`        | Zone Raw – fichiers bruts uploadés. |
-| `MINIO_BUCKET_CLEAN`      | Zone Clean – résultats par document (OCR, extraction). |
-| `MINIO_BUCKET_CURATED`    | Zone Curated – agrégations, exports (CRM, conformité). |
+| Variable d’environnement     | Rôle |
+|------------------------------|------|
+| `MINIO_ENDPOINT`             | Ex. `localhost:9000` (ou host du serveur MinIO partagé). |
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | Identifiants (ex. `minioadmin` / `minioadmin123`). |
+| `MINIO_SECURE`               | `false` en local, `true` si HTTPS. |
+| `MINIO_BUCKET`               | **Un seul bucket** partagé, ex. `datalake`. |
+| `MINIO_RAW_PREFIX`           | Préfixe zone Raw, ex. `raw/`. |
+| `MINIO_CURATED_PREFIX`       | Préfixe zone Curated, ex. `curated/`. |
+| `MINIO_VALIDATION_PREFIX`    | Préfixe résultats de validation, ex. `curated/validation/`. |
+
+**Exemple de `.env` (aligné OCR / validation) :**
+```env
+MINIO_ENDPOINT=localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin123
+MINIO_SECURE=false
+MINIO_BUCKET=datalake
+MINIO_CURATED_PREFIX=curated/
+MINIO_VALIDATION_PREFIX=curated/validation/
+```
 
 ---
 
-### 4.1 Zone Raw – documents bruts (implémentée)
+### 4.1 Zone Raw – documents bruts
 
-**Rôle :** Stocker les fichiers **tels qu’uploadés**, sans transformation.
+**Rôle :** Fichiers **tels qu’uploadés** (backend).  
+**Préfixe :** `raw/` (ou valeur de `MINIO_RAW_PREFIX`).
 
-**Bucket :** `MINIO_BUCKET_RAW`.
-
-**Clé d’objet (convention backend actuelle) :**
+**Clé d’objet :**
 ```
-{document_id}/{filename}
+raw/{document_id}/{filename}
 ```
-- `document_id` : UUID du document (clé métier dans MongoDB).
+- `document_id` : UUID du document (clé métier MongoDB).
 - `filename` : nom du fichier original.
 
-**Exemple :**
-```
-a1b2c3d4-e5f6-7890-abcd-ef1234567890/facture-2026-001.pdf
-```
+**MongoDB :** `documents.minio_path` contient cette **clé complète** (avec préfixe). L’API génère des URLs de téléchargement via presigned URL sur le bucket `MINIO_BUCKET` avec cette clé.
 
-**MongoDB :** Le champ `documents.minio_path` contient **cette clé uniquement** (sans nom de bucket). L’API génère des URLs de téléchargement via **presigned URL** sur le bucket RAW avec cette clé.
-
-**Qui écrit :** Backend (FastAPI) à l’upload (`minio_service.upload_raw`).  
-**Qui lit :** Backend (presigned URL pour le frontend) ; pipeline (Airflow) pour lire le fichier et lancer OCR/extraction.
+**Qui écrit :** Backend à l’upload. **Qui lit :** Backend (presigned URL) ; pipeline OCR.
 
 ---
 
-### 4.2 Zone Clean – résultats par document (prévue)
+### 4.2 Zone Clean – résultats par document (OCR / extraction)
 
-**Rôle :** Stocker, **par document traité**, les artefacts du pipeline (OCR, extraction, etc.).  
-**Bucket :** `MINIO_BUCKET_CLEAN`. Créé par `init_buckets()`, non encore utilisé par le backend pour l’upload ou les presigned URLs.
-
-**Convention envisagée (à valider avec le pipeline) :** par exemple `{document_id}/original.pdf`, `{document_id}/ocr.txt`, `{document_id}/extraction.json`, etc. Le backend pourra ensuite mettre à jour `documents.minio_path` vers une clé dans CLEAN si besoin, ou gérer un second champ dédié.
-
-**Qui écrit :** Pipeline (Airflow) après OCR et extraction.  
-**Qui lit :** Backend (API) pour servir fichiers / OCR / extraction au frontend (à implémenter si besoin).
+**Rôle :** Artefacts du pipeline (OCR, extraction) par document.  
+**Préfixe :** convention à aligner avec le pipeline (ex. `clean/`).  
+**Qui écrit :** Pipeline (Airflow / OCR). **Qui lit :** Backend, validation.
 
 ---
 
-### 4.3 Zone Curated – agrégations (prévue)
+### 4.3 Zone Curated – agrégations et validation
 
-**Rôle :** Données **agrégées ou dérivées** pour CRM et conformité.  
-**Bucket :** `MINIO_BUCKET_CURATED`. Créé par `init_buckets()`, réservé pour jobs Airflow ou API futures.
-
-**Convention :** À définir (ex. exports par type, par fournisseur, attestations, etc.).
+**Rôle :** Données agrégées, exports, et **résultats de validation**.  
+**Préfixes :** `curated/` et `curated/validation/` (`MINIO_CURATED_PREFIX`, `MINIO_VALIDATION_PREFIX`).  
+**Qui écrit :** Jobs Airflow, API, module de validation. **Qui lit :** Backend, CRM, conformité.
 
 ---
 
 ### 4.4 Récapitulatif
 
-| Zone   | Variable env           | Usage actuel backend                         |
-|--------|------------------------|----------------------------------------------|
-| **Raw**   | `MINIO_BUCKET_RAW`    | Upload : `{document_id}/{filename}` ; presigned URL. |
-| **Clean** | `MINIO_BUCKET_CLEAN`  | Bucket créé ; usage à définir (pipeline).   |
-| **Curated** | `MINIO_BUCKET_CURATED` | Bucket créé ; usage à définir (exports).   |
+| Couche   | Préfixe / variable           | Usage |
+|----------|-----------------------------|-------|
+| **Raw**  | `raw/` (`MINIO_RAW_PREFIX`)  | Upload backend ; lecture OCR. |
+| **Clean**| à définir avec le pipeline  | OCR, extraction par document. |
+| **Curated** | `curated/`               | Agrégations, exports. |
+| **Validation** | `curated/validation/` | Résultats de validation. |
 
-MongoDB ne stocke **pas** les fichiers ; il stocke la **clé d’objet** dans `minio_path` (zone Raw aujourd’hui) et les données structurées dans `extracted_data` et `anomalies`.
+Un seul bucket **`MINIO_BUCKET`** (ex. `datalake`) pour tout le projet. MongoDB stocke la **clé d’objet** dans `minio_path` et les données structurées dans `extracted_data` et `anomalies`.
 
 ---
 
@@ -204,18 +208,12 @@ MongoDB ne stocke **pas** les fichiers ; il stocke la **clé d’objet** dans `m
 |---------|--------------|
 | `README.md` | Ce fichier : flux de données, rôle des collections, **architecture MinIO** (section 4). |
 | `schemas/collections.md` | **Schéma complet** des collections (aligné avec le backend FastAPI). |
-| `init-scripts/02-mongodb-indexes.js` | Script JS pour créer les index manuellement avec `mongosh` (optionnel). |
 
 ---
 
 ## 6. Initialiser la base
 
-- **Recommandé :** Lancer le **backend** (FastAPI). Au démarrage, `backend/database/mongo.py` crée les index via `create_indexes()`. Les collections sont créées à la première écriture.
-- **Optionnel (sans lancer le backend) :** Exécuter le script JS avec `mongosh` :
-  ```bash
-  mongosh "<MONGO_URL>" --file data-architecture/init-scripts/02-mongodb-indexes.js
-  ```
-  Les variables d’environnement (ex. `MONGO_URL`, `MONGO_DB`) sont à configurer à la **racine du projet** (voir `.env.example` à la racine).
+Lancer le **backend** (FastAPI). Au démarrage, `backend/database/mongo.py` crée les index via `create_indexes()`. Les collections sont créées à la première écriture. Les variables d’environnement (ex. `MONGO_URL`, `MONGO_DB`, MinIO) sont à configurer à la **racine du projet** (voir `.env.example` à la racine).
 
 ---
 

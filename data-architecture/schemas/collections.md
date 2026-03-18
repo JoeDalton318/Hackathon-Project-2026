@@ -37,7 +37,7 @@ Clé métier : `document_id` (UUID string).
 | `user_id` | string | oui | Référence `users.user_id` (UUID). |
 | `original_filename` | string | oui | Nom du fichier uploadé. |
 | `mime_type` | string | non | application/pdf, image/*, etc. |
-| `minio_path` | string | oui | Chemin du fichier dans MinIO (Bronze ou Silver selon convention). |
+| `minio_path` | string | oui | Clé d’objet dans le bucket MinIO partagé (ex. `raw/{document_id}/{filename}`). Un seul bucket `datalake` avec préfixes raw/clean/curated. |
 | `status` | string | oui | `pending`, `processing`, `ocr_done`, `extraction_done`, `done`, `error`. |
 | `document_type` | string | non | `facture`, `devis`, `kbis`, `rib`, `attestation_urssaf`, `attestation_siret`, `unknown`. |
 | `extracted_data` | object | non | Données structurées extraites par l’IA. |
