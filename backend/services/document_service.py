@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from models.document import DocumentRecord, DocumentStatus, DocumentType
@@ -41,14 +41,18 @@ async def update_from_callback(payload: PipelineCallbackPayload) -> None:
     db = get_db()
     update: dict = {
         "status": payload.status,
-        "updated_at": datetime.utcnow(),
+        "updated_at": datetime.now(timezone.utc),
     }
     if payload.document_type is not None:
         update["document_type"] = payload.document_type
+    if payload.decision is not None:
+        update["decision"] = payload.decision
     if payload.extracted_data:
         update["extracted_data"] = payload.extracted_data
-    if payload.anomalies:
-        update["anomalies"] = payload.anomalies
+    if payload.alerts:
+        update["anomalies"] = payload.alerts
+    if payload.signals:
+        update["signals"] = payload.signals
 
     await db[COLLECTION].update_one(
         {"document_id": payload.document_id},
@@ -94,7 +98,7 @@ async def update_minio_path(document_id: str, minio_path: str) -> None:
     db = get_db()
     await db[COLLECTION].update_one(
         {"document_id": document_id},
-        {"$set": {"minio_path": minio_path, "updated_at": datetime.utcnow()}},
+        {"$set": {"minio_path": minio_path, "updated_at": datetime.now(timezone.utc)}},
     )
 
 
@@ -102,7 +106,7 @@ async def update_status(document_id: str, new_status: DocumentStatus) -> None:
     db = get_db()
     await db[COLLECTION].update_one(
         {"document_id": document_id},
-        {"$set": {"status": new_status, "updated_at": datetime.utcnow()}},
+        {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc)}},
     )
 
 

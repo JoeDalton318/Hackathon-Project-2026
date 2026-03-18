@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field
@@ -15,4 +15,4 @@ class UserRecord(BaseModel):
     hashed_password: str
     nom: str
     role: UserRole = UserRole.USER
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
