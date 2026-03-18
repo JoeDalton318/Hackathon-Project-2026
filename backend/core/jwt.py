@@ -1,22 +1,15 @@
+from datetime import datetime, timedelta, timezone
+
 import bcrypt
-
-from datetime import datetime, timedelta
-
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-
-from app.config import settings
-
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from models.user import UserRecord
+
+from app.config import settings
 from database.mongo import get_db
+from models.user import UserRecord
 
 bearer_scheme = HTTPBearer()
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
 
 
 def hash_password(password: str) -> str:
@@ -29,7 +22,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(data: dict) -> str:
     payload = data.copy()
-    payload["exp"] = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
+    payload["exp"] = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
@@ -39,6 +32,7 @@ def decode_access_token(token: str) -> dict | None:
     except JWTError:
         return None
 
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> UserRecord:
@@ -47,14 +41,14 @@ async def get_current_user(
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token invalide ou expiré",
+            detail="Token invalid or expired",
         )
     db = get_db()
     doc = await db["users"].find_one({"user_id": payload.get("user_id")})
     if doc is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Utilisateur introuvable",
+            detail="User not found",
         )
     doc.pop("_id", None)
     return UserRecord(**doc)

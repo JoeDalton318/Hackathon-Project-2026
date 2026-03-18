@@ -301,35 +301,36 @@ Centralise la lecture des variables d’environnement.
 
 validation/
 ├── app/
-│   ├── anomaly_model.py
-│   ├── insee_client.py
-│   ├── minio_io.py
-│   ├── models.py
-│   ├── ocr_adapter.py
-│   ├── result_formatter.py
-│   ├── settings.py
-│   ├── validation_core.py
-│   ├── validation_engine.py
-│   ├── validation_rules.py
-│   ├── prepare_ml_data.py
+│   ├── anomaly_model.py        Modèle ML d’anomalie (entraînement, chargement, scoring)
+│   ├── insee_client.py         Client API INSEE / SIRENE pour les vérifications externes
+│   ├── minio_io.py             Lecture des extraction.json et écriture des résultats dans MinIO
+│   ├── models.py               Modèles Pydantic internes (BatchInput, DocumentInput, Alert, etc.)
+│   ├── ocr_adapter.py          Transformation des JSON OCR en objets internes de validation
+│   ├── prepare_ml_data.py      Génération des données d’entraînement et entraînement du modèle ML
+│   ├── result_formatter.py     Construction des résultats finaux par document à partir du batch
+│   ├── service.py              Point d’entrée Python réutilisable pour lancer la validation
+│   ├── settings.py             Lecture centralisée des variables d’environnement
+│   ├── validation_core.py      Fonctions utilitaires : parsing, normalisation, checksum, regroupement
+│   ├── validation_engine.py    Orchestrateur principal du moteur de validation
+│   ├── validation_rules.py     Règles métier unitaires et inter-documents
+│   ├── __init__.py             Exposition des fonctions publiques du module
 ├── tests/
 │   ├── fixtures/
-│   │   ├── valid_batch.json
-│   │   ├── invalid_batch.json
-│   │   └── api_unavailable_batch.json
-│   └── run_all.py
-├── .env
-├── .env_example
-├── Dockerfile
-├── main.py
-└── requirements.txt
+│   │   ├── valid_batch.json            Jeu de test batch valide
+│   │   ├── invalid_batch.json          Jeu de test batch invalide
+│   │   └── api_unavailable_batch.json  Jeu de test avec API externe indisponible
+│   └── run_all.py              Script de lancement des tests fonctionnels
+├── .env_example                Exemple de configuration attendue
+├── Dockerfile                  Image Docker du module validation
+├── Documentation.md            Documentation du module
+├── main.py                     Point d’entrée CLI
+└── requirements.txt            Dépendances Python
 
 # Tests
 
 ## 1. Tests fonctionnels
 
 Les scénarios de test sont dans :
-
 
 tests/fixtures/
 
@@ -342,9 +343,9 @@ tests/fixtures/
 
 Le script :
 
-
+```bash
 tests/run_all.py
-
+```
 
 permet d’exécuter tous les scénarios.
 
@@ -352,8 +353,8 @@ permet d’exécuter tous les scénarios.
 
 ```bash
 python tests/run_all.py
-
-Ce script :
+```
+**Ce script :**
 
 charge les fixtures JSON
 
@@ -364,11 +365,11 @@ lance la validation
 affiche les résultats
 
 permet de vérifier rapidement les décisions et alertes attendues
-```
 
-2. Test du moteur sur MinIO réel
+---
+## 2. Test du moteur sur MinIO 
 
-Pré-requis :
+**Pré-requis :**
 
 MinIO démarré
 
@@ -378,4 +379,92 @@ curated/.../.../.../extraction.json
 
 Lancer :
 
+```bash
 python main.py
+```
+---
+
+## Intégration avec le reste du système
+
+Le module de validation est conçu pour être découplé et s’intégrer facilement avec :
+
+- le pipeline d’orchestration (**Airflow**)
+- le backend API
+- **MinIO** comme stockage central
+
+---
+
+## Intégration avec l’OCR
+
+Le moteur de validation dépend uniquement des fichiers produits par l’OCR.
+
+###  Contrat attendu
+
+Les fichiers OCR doivent être déposés dans MinIO sous la forme :
+curated/YYYY/MM/DD/<document_id>/extraction.json
+
+
+### Contenu minimal attendu :
+
+- `document_id`
+- `file_name`
+- `classification.document_type`
+- `ocr_metadata`
+- `raw_text`
+- bloc structuré selon le type (facture, rib, etc.)
+
+
+---
+
+## Intégration avec Airflow
+
+Le module de validation peut être exécuté comme une étape du pipeline.
+
+###  Mode d’exécution recommandé
+
+**Via CLI :**
+
+```bash
+python main.py --source minio --extraction-key <minio_key>
+```
+**Via appel Python :**
+
+```bash
+from app.service import run_validation
+```
+run_validation(
+    source="minio",
+    extraction_keys=[...],
+    store_minio=True
+)
+
+## Fonctionnement
+
+Airflow récupère un document_id
+
+L’OCR produit extraction.json dans MinIO
+
+Airflow déclenche la validation
+
+**La validation :**
+
+lit depuis MinIO
+
+exécute les règles
+
+écrit les résultats dans MinIO
+
+## Intégration avec le Backend
+
+Le backend consomme les données stockées dans MinIO apres validation.
+
+**Lecture côté backend**
+
+Le backend peut :
+
+lire les résultats de validation via MinIO :
+
+curated/validation/documents/.../validation_result.json
+
+
+
