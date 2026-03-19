@@ -6,15 +6,17 @@ Toutes les variables sont chargees depuis le fichier .env a la racine du projet.
 import os
 
 # Configuration MinIO Data Lake - Variables d'environnement alignees avec le Backend
+# ARCHITECTURE: 1 bucket unique avec prefixes (raw/, clean/, curated/)
 MINIO_CONFIG = {
     'endpoint': os.getenv('MINIO_ENDPOINT', 'minio:9000'),
     'access_key': os.getenv('MINIO_ACCESS_KEY', 'minioadmin'),
-    'secret_key': os.getenv('MINIO_SECRET_KEY', 'minioadmin'),
-    'secure': os.getenv('MINIO_SECURE', 'False').lower() == 'true',
-    'buckets': {
-        'raw': os.getenv('MINIO_BUCKET_RAW', 'raw'),
-        'clean': os.getenv('MINIO_BUCKET_CLEAN', 'clean'),
-        'curated': os.getenv('MINIO_BUCKET_CURATED', 'curated')
+    'secret_key': os.getenv('MINIO_SECRET_KEY', 'minioadmin123'),
+    'secure': os.getenv('MINIO_SECURE', 'false').lower() == 'true',
+    'bucket': os.getenv('MINIO_BUCKET', 'datalake'),  # Bucket unique
+    'prefixes': {
+        'raw': os.getenv('MINIO_RAW_PREFIX', 'raw/'),
+        'clean': os.getenv('MINIO_CLEAN_PREFIX', 'clean/'),
+        'curated': os.getenv('MINIO_CURATED_PREFIX', 'curated/')
     }
 }
 
@@ -25,10 +27,12 @@ MONGODB_CONFIG = {
 }
 
 # Configuration API Backend - Developpee par Samuel (Lead API & Backend)
-# Utilisee pour le remplissage automatique des applications metiers
+# Utilisee pour le callback apres traitement pipeline
 BACKEND_API_CONFIG = {
     'base_url': os.getenv('BACKEND_API_URL', 'http://backend:8000'),
+    'internal_secret': os.getenv('INTERNAL_API_SECRET'),
     'endpoints': {
+        'callback': '/api/internal/pipeline/result',
         'crm_autofill': '/api/crm/auto-fill',
         'conformity_autofill': '/api/conformity/auto-fill',
         'health': '/health'
@@ -70,7 +74,7 @@ DEFAULT_DAG_ARGS = {
 
 # Configuration des schedules
 SCHEDULES = {
-    'processing_pipeline': '*/15 * * * *',  # Toutes les 15 minutes
+    'processing_pipeline': None,             # Event-driven (declenche par Backend API)
     'monitoring': '0 * * * *',               # Toutes les heures
     'maintenance': '0 2 * * *'               # Tous les jours a 2h
 }
