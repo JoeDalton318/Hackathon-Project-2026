@@ -43,6 +43,19 @@ function notifyMessage(message) {
     });
 }
 
+function getCurrentDocumentId() {
+    if (typeof window === 'undefined' || !window.location || typeof window.location.pathname !== 'string') {
+        return null;
+    }
+
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    if (segments.length === 0) {
+        return null;
+    }
+
+    return segments[segments.length - 1];
+}
+
 function scheduleReconnect() {
     if (!shouldReconnect || reconnectTimer) {
         return;
@@ -61,13 +74,19 @@ export function connectWebSocket() {
         return null;
     }
 
+    const documentId = getCurrentDocumentId();
+    if (!documentId) {
+        notifyStatus('disconnected');
+        return null;
+    }
+
     if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
         return socket;
     }
 
     shouldReconnect = true;
     const wsBaseUrl = toWebSocketBaseUrl(apiBaseUrl || process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000');
-    const wsUrl = `${wsBaseUrl}/ws?token=${encodeURIComponent(token)}`;
+    const wsUrl = `${wsBaseUrl}/ws/documents/${encodeURIComponent(documentId)}?token=${encodeURIComponent(token)}`;
 
     socket = new WebSocket(wsUrl);
     notifyStatus('connecting');
