@@ -14,14 +14,13 @@ class DocumentStatus(StrEnum):
 
 
 class DocumentType(StrEnum):
-    INVOICE = auto()
-    QUOTE = auto()
-    KBIS = auto()
-    RIB = auto()
-    URSSAF = auto()
-    SIRET_CERT = auto()
-    UNKNOWN = auto()
-
+    FACTURE = "facture"
+    DEVIS = "devis"
+    KBIS = "extrait_kbis"
+    RIB = "rib"
+    URSSAF = "attestation_vigilance_urssaf"
+    SIRET_CERT = "attestation_siret"
+    UNKNOWN = "inconnu"
 
 class DocumentRecord(BaseModel):
     user_id: str
