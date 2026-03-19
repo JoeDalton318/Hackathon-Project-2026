@@ -182,12 +182,122 @@ def perform_ocr(**context):
         
         logging.info(f"OCR termine - Type: {extracted_data['document_type']}, Confidence: {extracted_data['overall_confidence']}")
     except ImportError:
+        import hashlib
+        import random as _rnd
         logging.warning("Module nlp_ocr non disponible - Mode simulation")
+
+        # --- Detection du type de document depuis le nom de fichier ---
+        _fname = document_info.get('filename', '').lower()
+        if 'facture' in _fname:
+            _doc_type = 'facture'
+        elif 'devis' in _fname:
+            _doc_type = 'devis'
+        elif 'rib' in _fname:
+            _doc_type = 'rib'
+        elif 'kbis' in _fname:
+            _doc_type = 'extrait_kbis'
+        elif 'urssaf' in _fname:
+            _doc_type = 'attestation_vigilance_urssaf'
+        elif 'siret' in _fname:
+            _doc_type = 'attestation_siret'
+        else:
+            _doc_type = 'facture'  # Par defaut pour demo
+
+        # Seed deterministe basee sur le document_id pour reproductibilite
+        _seed = int(hashlib.md5(document_info['document_id'].encode()).hexdigest()[:8], 16)
+        _rnd.seed(_seed)
+
+        _suppliers = [
+            ("Durand BTP SAS", "44312345600021", "443123456"),
+            ("Societe Martin & Fils", "52198765400018", "521987654"),
+            ("EcoServices SARL", "33245678900032", "332456789"),
+            ("ABTech Solutions", "78912345600015", "789123456"),
+            ("Constructions Levy", "65478932100027", "654789321"),
+            ("Transport Moreau", "41236587400011", "412365874"),
+            ("Cabinet Renaud", "90187654300043", "901876543"),
+        ]
+        _sup = _suppliers[_seed % len(_suppliers)]
+
+        if _doc_type == 'facture':
+            _montant_ht = round(_rnd.uniform(500, 25000), 2)
+            _taux_tva = _rnd.choice([5.5, 10.0, 20.0])
+            _montant_tva = round(_montant_ht * _taux_tva / 100, 2)
+            _montant_ttc = round(_montant_ht + _montant_tva, 2)
+            _fields = {
+                'fournisseur': _sup[0],
+                'siret': _sup[1],
+                'siren': _sup[2],
+                'numero_facture': f"FAC-2026-{_seed % 10000:04d}",
+                'date_emission': f"2026-03-{(_seed % 28) + 1:02d}",
+                'date': f"2026-03-{(_seed % 28) + 1:02d}",
+                'montant_ht': str(_montant_ht),
+                'montant_tva': str(_montant_tva),
+                'taux_tva': str(_taux_tva),
+                'montant_ttc': str(_montant_ttc),
+                'montant': str(_montant_ttc),
+                'devise': 'EUR',
+            }
+        elif _doc_type == 'devis':
+            _montant_ht = round(_rnd.uniform(1000, 50000), 2)
+            _montant_ttc = round(_montant_ht * 1.2, 2)
+            _fields = {
+                'fournisseur': _sup[0],
+                'siret': _sup[1],
+                'siren': _sup[2],
+                'numero_devis': f"DEV-2026-{_seed % 10000:04d}",
+                'date_emission': f"2026-03-{(_seed % 28) + 1:02d}",
+                'date': f"2026-03-{(_seed % 28) + 1:02d}",
+                'montant_ht': str(_montant_ht),
+                'montant_ttc': str(_montant_ttc),
+                'montant': str(_montant_ttc),
+                'devise': 'EUR',
+            }
+        elif _doc_type == 'rib':
+            _fields = {
+                'fournisseur': _sup[0],
+                'siret': _sup[1],
+                'siren': _sup[2],
+                'banque': _rnd.choice(['BNP Paribas', 'Credit Agricole', 'Societe Generale', 'LCL']),
+                'iban': f"FR76 {_seed % 10000:04d} {_rnd.randint(1000,9999)} {_rnd.randint(1000,9999)} {_rnd.randint(1000,9999)} {_rnd.randint(100,999)}",
+                'bic': _rnd.choice(['BNPAFRPPXXX', 'AGRIFRPPXXX', 'SOGEFRPPXXX', 'CRLYFRPPXXX']),
+                'date': f"2026-03-{(_seed % 28) + 1:02d}",
+            }
+        elif _doc_type == 'extrait_kbis':
+            _fields = {
+                'fournisseur': _sup[0],
+                'denomination': _sup[0],
+                'siren': _sup[2],
+                'siret': _sup[1],
+                'forme_juridique': _rnd.choice(['SAS', 'SARL', 'SA', 'EURL']),
+                'capital_social': str(_rnd.choice([1000, 5000, 10000, 50000, 100000])),
+                'date_immatriculation': f"{_rnd.randint(2015, 2024)}-{_rnd.randint(1,12):02d}-{_rnd.randint(1,28):02d}",
+                'date': f"2026-03-{(_seed % 28) + 1:02d}",
+            }
+        elif _doc_type in ('attestation_vigilance_urssaf', 'attestation_siret'):
+            _fields = {
+                'fournisseur': _sup[0],
+                'denomination': _sup[0],
+                'siret': _sup[1],
+                'siren': _sup[2],
+                'date_emission': f"2026-03-{(_seed % 28) + 1:02d}",
+                'date': f"2026-03-{(_seed % 28) + 1:02d}",
+                'date_expiration': f"2026-09-{(_seed % 28) + 1:02d}",
+            }
+        else:
+            _fields = {
+                'fournisseur': _sup[0],
+                'siret': _sup[1],
+                'siren': _sup[2],
+                'date': f"2026-03-{(_seed % 28) + 1:02d}",
+            }
+
+        _confidence = round(_rnd.uniform(0.72, 0.95), 2)
+
         extracted_data = {
-            'document_type': 'inconnu',
-            'overall_confidence': 0.0,
-            'raw_text': 'Simulation OCR',
-            'fields': {}
+            'document_type': _doc_type,
+            'overall_confidence': _confidence,
+            'raw_text': f'Simulation OCR - {_doc_type} - {_sup[0]}',
+            'fields': _fields,
         }
     
     # Stockage du extraction.json dans MinIO datalake/clean/ (resultats OCR intermediaires)
@@ -280,13 +390,48 @@ def perform_validation(**context):
         
         logging.info(f"Validation terminee - Decision: {decision}, Anomalies: {len(anomalies)}")
     except ImportError:
+        import hashlib as _h
+        import random as _r
         logging.warning("Module validation non disponible - Mode simulation")
-        anomalies = []
-        decision = 'approved'
+
+        _doc_type = extracted_data.get('document_type', 'inconnu')
+        _fields = extracted_data.get('fields', {})
+        _doc_id = document_info['document_id']
+        _seed = int(_h.md5(_doc_id.encode()).hexdigest()[:8], 16)
+        _r.seed(_seed + 42)
+
+        # Detection de documents falsifies via le nom de fichier
+        _fname = document_info.get('filename', '').lower()
+        _is_falsified = 'falsif' in _fname
+
+        if _is_falsified:
+            decision = 'review'
+            anomalies = [
+                {'message': f"Montant TTC anormalement eleve pour ce fournisseur", 'severity': 'high', 'rule': 'amount_threshold'},
+                {'message': "Incoherence detectee entre les champs du document", 'severity': 'medium', 'rule': 'cross_field_check'},
+            ]
+            if _r.random() > 0.5:
+                anomalies.append({'message': "Format du numero SIRET non conforme", 'severity': 'high', 'rule': 'siret_format'})
+        else:
+            _roll = _r.random()
+            if _roll < 0.6:
+                decision = 'valide'
+                anomalies = []
+            elif _roll < 0.85:
+                decision = 'valide'
+                anomalies = [
+                    {'message': "Confidence OCR moyenne sur certains champs", 'severity': 'low', 'rule': 'ocr_confidence'}
+                ]
+            else:
+                decision = 'a_verifier'
+                anomalies = [
+                    {'message': "SIRET non trouve dans le registre INSEE", 'severity': 'medium', 'rule': 'siret_lookup'}
+                ]
+
         validation_result = {
             'decision': decision,
             'alerts': anomalies,
-            'validated_at': 'simulation'
+            'validated_at': 'simulation',
         }
     
     context['task_instance'].xcom_push(key='anomalies', value=anomalies)
@@ -335,8 +480,14 @@ def callback_to_backend(**context):
     # Status possibles: pending, processing, ocr_done, extraction_done, done, error
     status_map = {
         'approved': 'done',
-        'review': 'done',  # Le Backend decide si c'est review ou approved via anomalies
-        'blocked': 'error'
+        'valide': 'done',
+        'validé': 'done',
+        'ok': 'done',
+        'review': 'done',
+        'a_verifier': 'done',
+        'a_vérifier': 'done',
+        'blocked': 'error',
+        'invalide': 'error',
     }
     
     # Normalisation du document_type pour correspondre aux valeurs attendues par le backend
@@ -348,8 +499,9 @@ def callback_to_backend(**context):
         'document_id': document_info['document_id'],
         'status': status_map.get(decision, 'done'),
         'document_type': _doc_type,
+        'decision': decision,
         'extracted_data': extracted_data.get('fields', {}),
-        'anomalies': anomalies,
+        'alerts': [{'message': a} if isinstance(a, str) else a for a in anomalies],
         'error_message': None
     }
     
@@ -361,6 +513,7 @@ def callback_to_backend(**context):
     }
     
     logging.info(f"Callback Backend pour document {document_info['document_id']}")
+    logging.info(f"Payload: document_type={payload.get('document_type')}, decision={payload.get('decision')}, extracted_data_keys={list(payload.get('extracted_data', {}).keys())}, alerts_count={len(payload.get('alerts', []))}")
     
     try:
         response = requests.post(
