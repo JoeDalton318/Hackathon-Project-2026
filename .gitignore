@@ -51,3 +51,4 @@ react/build/
 
 # MinIO
 minio_data/
+nlp-ocr/dataset/
