@@ -226,7 +226,6 @@ volumes:
   # mongodb_data:  # Non utilisé avec MongoDB Atlas
   minio_data:
 
-
 networks:
   hackathon_network:
     driver: bridge
