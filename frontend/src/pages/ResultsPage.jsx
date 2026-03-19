@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Search, AlertCircle, FileSearch, ShieldAlert, ShieldCheck, XCircle, Sparkles } from 'lucide-react';
-import { mockDocuments } from '../mock/data';
 import { getApiErrorMessage } from '../services/apiClient';
 import { getDocuments } from '../services/documentService';
 import Button from '../components/ui/Button';
@@ -103,17 +102,17 @@ export default function ResultsPage() {
                     return;
                 }
 
-                setDocuments(Array.isArray(data) && data.length > 0 ? data : mockDocuments);
+                setDocuments(Array.isArray(data) ? data : []);
                 if (!Array.isArray(data) || data.length === 0) {
-                    setLoadError('Documents API returned no data. Showing mock documents.');
+                    setLoadError('Aucun document trouve en base pour ce compte.');
                 }
             } catch (error) {
                 if (!isActive) {
                     return;
                 }
 
-                setDocuments(mockDocuments);
-                setLoadError(`${getApiErrorMessage(error, 'Unable to load documents.')} Showing mock documents.`);
+                setDocuments([]);
+                setLoadError(getApiErrorMessage(error, 'Unable to load documents from backend API.'));
             } finally {
                 if (isActive) {
                     setLoading(false);
@@ -286,9 +285,17 @@ export default function ResultsPage() {
                                                 {(document.inconsistencies || []).map((item) => (
                                                     <Badge key={item} variant="error">{item}</Badge>
                                                 ))}
+                                                {document.amountSource && (
+                                                    <span className="text-[11px] text-gray-500">Amount source: {document.amountSource}</span>
+                                                )}
                                             </div>
                                         ) : (
-                                            <Badge variant="success">No issue detected</Badge>
+                                            <div className="flex flex-col gap-1">
+                                                <Badge variant="success">No issue detected</Badge>
+                                                {document.amountSource && (
+                                                    <span className="text-[11px] text-gray-500">Amount source: {document.amountSource}</span>
+                                                )}
+                                            </div>
                                         )}
                                     </TableCell>
                                 </TableRow>

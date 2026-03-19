@@ -39,18 +39,24 @@ async def get_record(
 
 async def update_from_callback(payload: PipelineCallbackPayload) -> None:
     db = get_db()
+    alerts = payload.alerts or []
+
     update: dict = {
         "status": payload.status,
         "updated_at": datetime.now(timezone.utc),
     }
     if payload.document_type is not None:
-        update["document_type"] = payload.document_type
+        incoming_type = str(payload.document_type).strip().lower()
+        if incoming_type == "unknown":
+            incoming_type = DocumentType.UNKNOWN.value
+        if incoming_type in {item.value for item in DocumentType}:
+            update["document_type"] = incoming_type
     if payload.decision is not None:
         update["decision"] = payload.decision
     if payload.extracted_data:
         update["extracted_data"] = payload.extracted_data
-    if payload.alerts:
-        update["anomalies"] = payload.alerts
+    if alerts:
+        update["anomalies"] = alerts
     if payload.signals:
         update["signals"] = payload.signals
 
@@ -79,6 +85,8 @@ async def list_records(
     docs = []
     async for doc in cursor:
         doc.pop("_id", None)
+        if doc.get("document_type") == "unknown":
+            doc["document_type"] = DocumentType.UNKNOWN.value
         docs.append(DocumentRecord(**doc))
     return total, docs
 

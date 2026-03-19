@@ -1,5 +1,8 @@
-import { NavLink } from 'react-router-dom';
-import { Upload, FileText, Users, Brain, BarChart3, X, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Upload, FileText, Users, Brain, BarChart3, X, Sparkles, LogOut } from 'lucide-react';
+import { logout } from '../services/auth';
+import { disconnectWebSocket } from '../services/ws';
 
 export const navItems = [
     { to: '/', label: 'Upload', icon: Upload, end: true },
@@ -8,6 +11,21 @@ export const navItems = [
 ];
 
 export default function Sidebar({ className = '', onNavigate, onClose }) {
+    const navigate = useNavigate();
+    const [isDisconnecting, setIsDisconnecting] = useState(false);
+
+    async function handleDisconnect() {
+        if (isDisconnecting) {
+            return;
+        }
+
+        setIsDisconnecting(true);
+        await logout();
+        disconnectWebSocket();
+        setIsDisconnecting(false);
+        navigate('/login', { replace: true });
+    }
+
     return (
         <aside className={`flex h-full w-72 flex-col border-r border-slate-800/80 bg-slate-900/95 backdrop-blur-xl ${className}`}>
             <div className="border-b border-slate-800/90 px-5 py-5">
@@ -70,6 +88,15 @@ export default function Sidebar({ className = '', onNavigate, onClose }) {
             </nav>
 
             <div className="border-t border-slate-800 px-4 py-4">
+                <button
+                    onClick={handleDisconnect}
+                    disabled={isDisconnecting}
+                    className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2.5 text-sm font-medium text-slate-200 transition hover:border-red-400/50 hover:bg-red-500/10 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    <LogOut className="h-4 w-4" />
+                    {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
+                </button>
+
                 <div className="flex items-center gap-2 text-slate-500">
                     <BarChart3 className="h-3.5 w-3.5" />
                     <span className="text-xs">Hackathon 2026 - v1.0</span>

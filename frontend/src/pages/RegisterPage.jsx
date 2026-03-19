@@ -14,7 +14,7 @@ export default function RegisterPage() {
     const [errorMessage, setErrorMessage] = useState('');
 
     if (isAuthenticated()) {
-        return <Navigate to="/upload" replace />;
+        return <Navigate to="/" replace />;
     }
 
     async function handleSubmit(event) {
@@ -28,7 +28,7 @@ export default function RegisterPage() {
             navigate('/login', {
                 replace: true,
                 state: {
-                    from: '/upload',
+                    from: '/',
                     registered: true,
                     email,
                 },

@@ -8,6 +8,7 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 from datetime import timedelta
 import logging
+import re
 
 # Configuration des parametres par defaut du DAG
 default_args = {
@@ -181,14 +182,67 @@ def perform_ocr(**context):
         }
         
         logging.info(f"OCR termine - Type: {extracted_data['document_type']}, Confidence: {extracted_data['overall_confidence']}")
-    except ImportError:
-        logging.warning("Module nlp_ocr non disponible - Mode simulation")
+    except ImportError as exc:
+        logging.warning("Module nlp_ocr non disponible (%s) - Fallback PDF text", exc)
         extracted_data = {
             'document_type': 'unknown',
             'overall_confidence': 0.0,
-            'raw_text': 'Simulation OCR',
+            'raw_text': 'Fallback OCR indisponible',
             'fields': {}
         }
+
+        # Lightweight fallback: extract raw text and probable total amount from PDF.
+        try:
+            from pypdf import PdfReader
+
+            reader = PdfReader(local_path)
+            raw_text = "\n".join((page.extract_text() or "") for page in reader.pages)
+
+            amount_value = None
+            amount_patterns = [
+                r"(?is)(montant\s+ttc|total\s+ttc|total\s+a\s+payer|net\s+a\s+payer)[^0-9]{0,40}([0-9][0-9\s\.,]+)",
+                r"(?is)(montant|total)[^0-9]{0,30}([0-9][0-9\s\.,]+)",
+            ]
+
+            for pattern in amount_patterns:
+                match = re.search(pattern, raw_text)
+                if not match:
+                    continue
+
+                candidate = match.group(2)
+                normalized = re.sub(r"[^0-9,\.]", "", candidate)
+
+                if "," in normalized and "." in normalized:
+                    normalized = normalized.replace(".", "").replace(",", ".")
+                elif "," in normalized:
+                    normalized = normalized.replace(",", ".")
+
+                try:
+                    amount_value = round(float(normalized), 2)
+                    break
+                except ValueError:
+                    continue
+
+            fields = {}
+            if amount_value is not None:
+                fields = {
+                    'montant_ttc': amount_value,
+                    'amount_ttc': amount_value,
+                    'facture': {
+                        'montant_ttc': {
+                            'value': str(amount_value),
+                        }
+                    },
+                }
+
+            extracted_data = {
+                'document_type': 'facture' if fields else 'unknown',
+                'overall_confidence': 0.35 if fields else 0.1,
+                'raw_text': raw_text[:1000],
+                'fields': fields,
+            }
+        except Exception as fallback_exc:
+            logging.warning("Fallback extraction indisponible: %s", fallback_exc)
     
     # Stockage du extraction.json dans MinIO datalake/clean/ (resultats OCR intermediaires)
     document_id = document_info['document_id']
@@ -344,6 +398,8 @@ def callback_to_backend(**context):
         'status': status_map.get(decision, 'done'),
         'document_type': extracted_data.get('document_type'),
         'extracted_data': extracted_data.get('fields', {}),
+        # Keep both keys for backward compatibility across backend schema versions.
+        'alerts': anomalies,
         'anomalies': anomalies,
         'error_message': None
     }
@@ -374,7 +430,13 @@ def callback_to_backend(**context):
         response.raise_for_status()
         
         logging.info(f"Callback reussi: {response.status_code}")
-        return response.json()
+        if response.status_code == 204 or not response.text.strip():
+            return {'ok': True, 'status_code': response.status_code}
+
+        try:
+            return response.json()
+        except ValueError:
+            return {'ok': True, 'status_code': response.status_code, 'body': response.text[:200]}
         
     except requests.exceptions.RequestException as e:
         logging.error(f"Erreur callback Backend: {e}")

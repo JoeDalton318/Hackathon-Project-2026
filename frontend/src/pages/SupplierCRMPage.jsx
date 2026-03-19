@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { mockDocuments, mockSuppliers } from '../mock/data';
 import {
     Search,
     Plus,
@@ -211,24 +210,30 @@ export default function SupplierCRMPage() {
 
             const errorMessages = [];
 
-            if (suppliersResult.status === 'fulfilled' && Array.isArray(suppliersResult.value) && suppliersResult.value.length > 0) {
+            if (suppliersResult.status === 'fulfilled' && Array.isArray(suppliersResult.value)) {
                 setSuppliers(suppliersResult.value);
+                if (suppliersResult.value.length === 0) {
+                    errorMessages.push('No suppliers found yet for this account.');
+                }
             } else {
-                setSuppliers(mockSuppliers);
+                setSuppliers([]);
                 const supplierReason = suppliersResult.status === 'rejected'
                     ? getApiErrorMessage(suppliersResult.reason, 'Unable to load suppliers.')
-                    : 'Suppliers API returned no data.';
-                errorMessages.push(`${supplierReason} Showing mock suppliers.`);
+                    : 'Suppliers API returned invalid data.';
+                errorMessages.push(supplierReason);
             }
 
-            if (documentsResult.status === 'fulfilled' && Array.isArray(documentsResult.value) && documentsResult.value.length > 0) {
+            if (documentsResult.status === 'fulfilled' && Array.isArray(documentsResult.value)) {
                 setDocuments(documentsResult.value);
+                if (documentsResult.value.length === 0) {
+                    errorMessages.push('No documents found yet for this account.');
+                }
             } else {
-                setDocuments(mockDocuments);
+                setDocuments([]);
                 const documentReason = documentsResult.status === 'rejected'
                     ? getApiErrorMessage(documentsResult.reason, 'Unable to load documents.')
-                    : 'Documents API returned no data.';
-                errorMessages.push(`${documentReason} Showing mock documents.`);
+                    : 'Documents API returned invalid data.';
+                errorMessages.push(documentReason);
             }
 
             setLoadError(errorMessages.join(' '));

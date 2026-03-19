@@ -46,7 +46,21 @@ api_router.include_router(crm.router)
 api_router.include_router(compliance.router)
 api_router.include_router(auth.router)
 
+
+@api_router.get("/")
+async def api_root():
+    return {"status": "ok", "service": "Hackathon 2026 API"}
+
+
+@api_router.get("/health")
+async def api_health():
+    return {"status": "ok"}
+
+
 app.include_router(api_router)
+
+# Backward compatibility for clients still calling /auth/* without /api prefix.
+app.include_router(auth.router)
 
 
 @app.get("/health")

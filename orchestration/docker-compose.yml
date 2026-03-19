@@ -21,7 +21,7 @@ services:
     networks:
       - hackathon_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U airflow_user"]
+      test: [ "CMD-SHELL", "pg_isready -U airflow_user" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,7 +29,7 @@ services:
   # MongoDB Atlas (Cloud) - Base de données principale fournie par Samuel
   # Cluster cloud accessible depuis tous les services
   # Plus besoin de MongoDB local, on utilise mongodb+srv://...
-  # 
+  #
   # Pour dev local uniquement, décommenter ci-dessous:
   # mongodb:
   #   image: mongo:7.0
@@ -64,7 +64,7 @@ services:
     networks:
       - hackathon_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -79,13 +79,7 @@ services:
     env_file:
       - ../.env
     entrypoint: >
-      /bin/sh -c "
-      sleep 5;
-      mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY};
-      mc mb myminio/datalake --ignore-existing;
-      echo '✓ Bucket datalake créé avec succès';
-      exit 0;
-      "
+      /bin/sh -c " sleep 5; mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY}; mc mb myminio/datalake --ignore-existing; echo '✓ Bucket datalake créé avec succès'; exit 0; "
     networks:
       - hackathon_network
 
@@ -105,7 +99,7 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow_user:airflow_pass@postgres/airflow_db
       AIRFLOW__CORE__FERNET_KEY: ''
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
       _AIRFLOW_DB_MIGRATE: 'true'
@@ -140,15 +134,16 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow_user:airflow_pass@postgres/airflow_db
       AIRFLOW__CORE__FERNET_KEY: ''
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+      PYTHONPATH: /opt/airflow/nlp-ocr:/opt/airflow/validation
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
-      - ../nlp-ocr/scripts:/opt/airflow/nlp-ocr
-      - ../validation/scripts:/opt/airflow/validation
+      - ../nlp-ocr:/opt/airflow/nlp-ocr
+      - ../validation:/opt/airflow/validation
     ports:
       - "8080:8080"
     command: webserver
@@ -168,14 +163,15 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow_user:airflow_pass@postgres/airflow_db
       AIRFLOW__CORE__FERNET_KEY: ''
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      PYTHONPATH: /opt/airflow/nlp-ocr:/opt/airflow/validation
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
-      - ../nlp-ocr/scripts:/opt/airflow/nlp-ocr
-      - ../validation/scripts:/opt/airflow/validation
+      - ../nlp-ocr:/opt/airflow/nlp-ocr
+      - ../validation:/opt/airflow/validation
     command: scheduler
     networks:
       - hackathon_network
@@ -222,8 +218,8 @@ services:
       - hackathon_network
 
 volumes:
-  postgres_data:
-  # mongodb_data:  # Non utilisé avec MongoDB Atlas
+  postgres_data: # mongodb_data:  # Non utilisé avec MongoDB Atlas
+
   minio_data:
 
 networks:

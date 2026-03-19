@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class LoginRequest(BaseModel):
@@ -9,7 +9,7 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: str
     password: str
-    nom: str
+    nom: str = Field(validation_alias=AliasChoices("nom", "name"))
 
 
 class TokenResponse(BaseModel):
