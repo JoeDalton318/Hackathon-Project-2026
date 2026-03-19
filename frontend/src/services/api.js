@@ -11,6 +11,8 @@ const api = axios.create({
     },
 });
 
+const isDebugLoggingEnabled = process.env.NODE_ENV !== 'production';
+
 api.interceptors.request.use(
     (config) => {
         const token = getAuthToken();
@@ -56,7 +58,9 @@ export async function getApiRootStatus() {
     try {
         const response = await api.get('/');
         const data = response?.data ?? {};
-        console.log('[API] GET /', data);
+        if (isDebugLoggingEnabled) {
+            console.log('[API] GET /', data);
+        }
         return data;
     } catch (error) {
         console.error('[API] GET / failed', error);
@@ -68,7 +72,9 @@ export async function getHealth() {
     try {
         const response = await api.get('/health');
         const data = response?.data ?? {};
-        console.log('[API] GET /health', data);
+        if (isDebugLoggingEnabled) {
+            console.log('[API] GET /health', data);
+        }
         return data;
     } catch (error) {
         console.error('[API] GET /health failed', error);
@@ -81,8 +87,10 @@ export async function getDocuments() {
         const response = await api.get('/documents');
         const payload = response?.data ?? {};
         const documents = Array.isArray(payload?.data) ? payload.data : [];
-        console.log('[API] GET /documents payload', payload);
-        console.log('[API] GET /documents extracted data', documents);
+        if (isDebugLoggingEnabled) {
+            console.log('[API] GET /documents payload', payload);
+            console.log('[API] GET /documents extracted data', documents);
+        }
         return {
             data: documents,
         };
@@ -107,8 +115,10 @@ export async function uploadDocuments(files) {
         const payload = response?.data ?? {};
         const uploadedFiles = Array.isArray(payload?.data) ? payload.data : [];
         const message = typeof payload?.message === 'string' ? payload.message : '';
-        console.log('[API] POST /upload payload', payload);
-        console.log('[API] POST /upload extracted data', uploadedFiles);
+        if (isDebugLoggingEnabled) {
+            console.log('[API] POST /upload payload', payload);
+            console.log('[API] POST /upload extracted data', uploadedFiles);
+        }
 
         return {
             data: uploadedFiles,
