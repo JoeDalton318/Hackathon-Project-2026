@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Search, AlertCircle, FileSearch, ShieldAlert, ShieldCheck, XCircle, Sparkles } from 'lucide-react';
-import { mockDocuments } from '../mock/data';
-import { getApiErrorMessage } from '../services/apiClient';
-import { getDocuments } from '../services/documentService';
+import { Search, AlertCircle, FileSearch, ShieldAlert, ShieldCheck, XCircle, Sparkles, Loader2 } from 'lucide-react';
+import { getApiErrorMessage, getDocuments } from '../services/api';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Card from '../components/ui/Card';
@@ -98,22 +96,23 @@ export default function ResultsPage() {
             setLoadError('');
 
             try {
-                const data = await getDocuments();
+                const response = await getDocuments();
+                console.log('[API] /documents response', response);
+
                 if (!isActive) {
                     return;
                 }
 
-                setDocuments(Array.isArray(data) && data.length > 0 ? data : mockDocuments);
-                if (!Array.isArray(data) || data.length === 0) {
-                    setLoadError('Documents API returned no data. Showing mock documents.');
-                }
+                const apiDocuments = Array.isArray(response?.data) ? response.data : [];
+                setDocuments(apiDocuments);
             } catch (error) {
                 if (!isActive) {
                     return;
                 }
 
-                setDocuments(mockDocuments);
-                setLoadError(`${getApiErrorMessage(error, 'Unable to load documents.')} Showing mock documents.`);
+                console.error('[API] Dashboard load failed', error);
+                setDocuments([]);
+                setLoadError(`Unable to reach backend API. ${getApiErrorMessage(error, 'Please check that the API is running on http://localhost:8000.')}`);
             } finally {
                 if (isActive) {
                     setLoading(false);
@@ -157,6 +156,12 @@ export default function ResultsPage() {
                 <p className="mt-2 max-w-3xl text-gray-500">
                     Review extracted fields and identify validation anomalies at a glance.
                 </p>
+                {loading && (
+                    <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/80 px-3 py-1 text-xs font-medium text-sky-700">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Loading documents from API...
+                    </div>
+                )}
             </div>
 
             {loadError && (
@@ -302,7 +307,11 @@ export default function ResultsPage() {
                                 <td colSpan={7} className="px-5 py-16 text-center text-gray-400">
                                     <div className="flex flex-col items-center justify-center">
                                         <AlertCircle className="mb-2 h-8 w-8" />
-                                        <p className="text-sm font-medium">No documents match your search.</p>
+                                        <p className="text-sm font-medium">
+                                            {documents.length === 0
+                                                ? 'No documents were returned by the backend.'
+                                                : 'No documents match your search.'}
+                                        </p>
                                     </div>
                                 </td>
                             </tr>

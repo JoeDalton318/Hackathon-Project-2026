@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { mockDocuments, mockSuppliers } from '../mock/data';
 import {
     Search,
     Plus,
@@ -13,8 +12,7 @@ import {
     Eye,
     Sparkles,
 } from 'lucide-react';
-import { getApiErrorMessage } from '../services/apiClient';
-import { getDocuments, getSuppliers } from '../services/documentService';
+import { getApiErrorMessage, getDocuments } from '../services/api';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Card, { CardBody, CardHeader } from '../components/ui/Card';
@@ -183,6 +181,37 @@ function SupplierCard({ supplier }) {
     );
 }
 
+function buildSuppliersFromDocuments(documents) {
+    const groupedBySupplier = documents.reduce((acc, document) => {
+        const supplierName = document.supplier || 'Unknown Supplier';
+        if (!acc[supplierName]) {
+            acc[supplierName] = [];
+        }
+        acc[supplierName].push(document);
+        return acc;
+    }, {});
+
+    return Object.entries(groupedBySupplier).map(([name, linkedDocuments], index) => {
+        const totalAmount = linkedDocuments.reduce((sum, document) => sum + (document.extractedAmount || 0), 0);
+
+        return {
+            id: `api-${index + 1}`,
+            name,
+            siren: linkedDocuments[0]?.siren || 'Not available',
+            category: 'Unknown',
+            country: 'Unknown',
+            contactEmail: '',
+            contactPhone: '',
+            documentCount: linkedDocuments.length,
+            totalAmount,
+            currency: linkedDocuments[0]?.currency || 'EUR',
+            lastActivity: new Date().toISOString().slice(0, 10),
+            status: 'active',
+            reliability: 100,
+        };
+    });
+}
+
 export default function SupplierCRMPage() {
     const [suppliers, setSuppliers] = useState([]);
     const [documents, setDocuments] = useState([]);
@@ -200,40 +229,31 @@ export default function SupplierCRMPage() {
             setLoading(true);
             setLoadError('');
 
-            const [suppliersResult, documentsResult] = await Promise.allSettled([
-                getSuppliers(),
-                getDocuments(),
-            ]);
+            try {
+                const documentsResponse = await getDocuments();
+                console.log('[SupplierCRMPage] documents response', documentsResponse);
 
-            if (!isActive) {
-                return;
+                if (!isActive) {
+                    return;
+                }
+
+                const realDocuments = Array.isArray(documentsResponse?.data) ? documentsResponse.data : [];
+                setDocuments(realDocuments);
+                setSuppliers(buildSuppliersFromDocuments(realDocuments));
+            } catch (error) {
+                if (!isActive) {
+                    return;
+                }
+
+                console.error('[SupplierCRMPage] data load failed', error);
+                setDocuments([]);
+                setSuppliers([]);
+                setLoadError(getApiErrorMessage(error, 'Unable to load supplier data from backend.'));
+            } finally {
+                if (isActive) {
+                    setLoading(false);
+                }
             }
-
-            const errorMessages = [];
-
-            if (suppliersResult.status === 'fulfilled' && Array.isArray(suppliersResult.value) && suppliersResult.value.length > 0) {
-                setSuppliers(suppliersResult.value);
-            } else {
-                setSuppliers(mockSuppliers);
-                const supplierReason = suppliersResult.status === 'rejected'
-                    ? getApiErrorMessage(suppliersResult.reason, 'Unable to load suppliers.')
-                    : 'Suppliers API returned no data.';
-                errorMessages.push(`${supplierReason} Showing mock suppliers.`);
-            }
-
-            if (documentsResult.status === 'fulfilled' && Array.isArray(documentsResult.value) && documentsResult.value.length > 0) {
-                setDocuments(documentsResult.value);
-            } else {
-                setDocuments(mockDocuments);
-                const documentReason = documentsResult.status === 'rejected'
-                    ? getApiErrorMessage(documentsResult.reason, 'Unable to load documents.')
-                    : 'Documents API returned no data.';
-                errorMessages.push(`${documentReason} Showing mock documents.`);
-            }
-
-            setLoadError(errorMessages.join(' '));
-
-            setLoading(false);
         }
 
         loadData();

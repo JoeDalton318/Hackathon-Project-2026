@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { useNavigate } from 'react-router-dom';
 import {
     Upload,
     FileText,
@@ -16,8 +15,7 @@ import {
     FolderOpen,
     ShieldCheck,
 } from 'lucide-react';
-import { getApiErrorMessage } from '../services/apiClient';
-import { processDocuments, uploadDocuments } from '../services/documentService';
+import { getApiErrorMessage, getDocuments, uploadDocuments } from '../services/api';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Card from '../components/ui/Card';
@@ -28,6 +26,27 @@ const ACCEPTED_TYPES = {
     'image/jpeg': ['.jpg', '.jpeg'],
     'image/tiff': ['.tiff', '.tif'],
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+};
+
+const DOCUMENT_TYPES = [
+    { value: 'invoice', label: 'Invoice' },
+    { value: 'quote', label: 'Quote' },
+    { value: 'certificate', label: 'Certificate' },
+];
+
+const INITIAL_FORM_STATE = {
+    documentType: 'invoice',
+    supplierName: '',
+    invoiceNumber: '',
+    invoiceDate: '',
+    amount: '',
+    currency: 'EUR',
+    quoteReference: '',
+    validUntil: '',
+    certificateType: '',
+    issuer: '',
+    hasExpiry: false,
+    expiryDate: '',
 };
 
 function getFileIcon(file) {
@@ -90,11 +109,11 @@ export default function UploadPage() {
     const filesRef = useRef([]);
     const [files, setFiles] = useState([]);
     const [processing, setProcessing] = useState(false);
-    const [done, setDone] = useState(false);
+    const [uploadedFiles, setUploadedFiles] = useState([]);
     const [statusMessage, setStatusMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
-    const navigate = useNavigate();
-
+    const [formState, setFormState] = useState(INITIAL_FORM_STATE);
+    const [formErrors, setFormErrors] = useState({});
     useEffect(() => {
         filesRef.current = files;
     }, [files]);
@@ -140,12 +159,51 @@ export default function UploadPage() {
     const clearAll = () => {
         files.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
         setFiles([]);
+        setUploadedFiles([]);
         setErrorMessage('');
         setStatusMessage('');
     };
 
+    const updateFormField = (key, value) => {
+        setFormState((prev) => ({ ...prev, [key]: value }));
+        setFormErrors((prev) => ({ ...prev, [key]: '' }));
+    };
+
+    const validateForm = () => {
+        const errors = {};
+        if (!formState.supplierName.trim()) {
+            errors.supplierName = 'Supplier name is required.';
+        }
+
+        if (formState.documentType === 'invoice') {
+            if (!formState.invoiceNumber.trim()) errors.invoiceNumber = 'Invoice number is required.';
+            if (!formState.invoiceDate) errors.invoiceDate = 'Invoice date is required.';
+            if (!formState.amount || Number(formState.amount) <= 0) errors.amount = 'Enter a valid amount.';
+        }
+
+        if (formState.documentType === 'quote') {
+            if (!formState.quoteReference.trim()) errors.quoteReference = 'Quote reference is required.';
+            if (!formState.validUntil) errors.validUntil = 'Validity date is required.';
+            if (!formState.amount || Number(formState.amount) <= 0) errors.amount = 'Enter a valid quote amount.';
+        }
+
+        if (formState.documentType === 'certificate') {
+            if (!formState.certificateType.trim()) errors.certificateType = 'Certificate type is required.';
+            if (!formState.issuer.trim()) errors.issuer = 'Issuer is required.';
+            if (formState.hasExpiry && !formState.expiryDate) errors.expiryDate = 'Expiry date is required.';
+        }
+
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
     const handleProcess = async () => {
         if (!files.length || processing) return;
+
+        if (!validateForm()) {
+            setErrorMessage('Please complete required metadata fields before processing.');
+            return;
+        }
 
         setProcessing(true);
         setErrorMessage('');
@@ -153,44 +211,24 @@ export default function UploadPage() {
         try {
             setStatusMessage('Uploading documents...');
             const uploadResponse = await uploadDocuments(files);
-            const uploadedIds = Array.isArray(uploadResponse)
-                ? uploadResponse.map((item) => item?.id).filter(Boolean)
-                : [];
+            console.log('[UploadPage] upload response', uploadResponse);
+            const uploaded = Array.isArray(uploadResponse?.data) ? uploadResponse.data : [];
+            const successMessage = uploadResponse?.message || 'Upload completed successfully.';
+            setUploadedFiles(uploaded);
+            setStatusMessage(successMessage);
 
-            setStatusMessage('Starting document processing...');
-            await processDocuments(
-                uploadedIds.length > 0
-                    ? { documentIds: uploadedIds }
-                    : { documentNames: files.map((file) => file.name) }
-            );
+            // Refresh backend documents after upload to keep downstream views in sync.
+            const refreshedDocuments = await getDocuments();
+            console.log('[UploadPage] refreshed /documents response', refreshedDocuments);
         } catch (error) {
-            setErrorMessage(`${getApiErrorMessage(error, 'Backend unavailable.')} Falling back to mock processing.`);
-            setStatusMessage('Backend unavailable, running mock processing flow...');
-            await new Promise((resolve) => setTimeout(resolve, 1800));
+            console.error('[UploadPage] upload failed', error);
+            setErrorMessage(getApiErrorMessage(error, 'Unable to upload documents to backend.'));
+            setStatusMessage('');
+            setUploadedFiles([]);
         } finally {
             setProcessing(false);
         }
-
-        setDone(true);
-        setTimeout(() => navigate('/results'), 1400);
     };
-
-    if (done) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-4">
-                <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <CheckCircle className="w-10 h-10 text-emerald-500" />
-                </div>
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Processing Complete!</h2>
-                    <p className="text-gray-500 mt-1">
-                        {files.length} document{files.length > 1 ? 's' : ''} analysed successfully.
-                    </p>
-                </div>
-                <p className="text-sm text-sky-500 animate-pulse">Redirecting to results…</p>
-            </div>
-        );
-    }
 
     return (
         <div className="saas-fade-in mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
@@ -236,10 +274,32 @@ export default function UploadPage() {
                 </div>
             )}
 
-            {statusMessage && !done && (
-                <div className="mb-6 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-700">
-                    {statusMessage}
+            {statusMessage && (
+                <div className={`mb-6 rounded-xl px-4 py-3 text-sm ${uploadedFiles.length > 0
+                    ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                    : 'border border-sky-100 bg-sky-50 text-sky-700'
+                    }`}>
+                    <div className="flex items-center gap-2">
+                        {uploadedFiles.length > 0 && <CheckCircle className="h-4 w-4" />}
+                        {statusMessage}
+                    </div>
                 </div>
+            )}
+
+            {uploadedFiles.length > 0 && (
+                <Card className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/30 p-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                        Uploaded Files Response
+                    </p>
+                    <div className="space-y-2">
+                        {uploadedFiles.map((file) => (
+                            <div key={`${file.id}-${file.filename}`} className="flex items-center justify-between rounded-xl border border-emerald-100 bg-white px-3 py-2 text-sm">
+                                <span className="font-medium text-slate-700">{file.filename}</span>
+                                <span className="text-xs text-slate-500">{file.contentType || 'unknown type'}</span>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
             )}
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_320px]">
@@ -350,6 +410,156 @@ export default function UploadPage() {
 
                     <div className="mt-6 rounded-2xl border border-dashed border-sky-200 bg-sky-50/70 p-4 text-sm text-sky-700">
                         {processing ? statusMessage || 'Processing in progress...' : 'Pipeline ready for a new batch.'}
+                    </div>
+
+                    <div className="mt-6 space-y-3 rounded-2xl border border-slate-100 bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Document Metadata</p>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-600">Document Type</label>
+                            <select
+                                value={formState.documentType}
+                                onChange={(e) => updateFormField('documentType', e.target.value)}
+                                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                            >
+                                {DOCUMENT_TYPES.map((type) => (
+                                    <option key={type.value} value={type.value}>{type.label}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-600">Supplier Name</label>
+                            <input
+                                type="text"
+                                value={formState.supplierName}
+                                onChange={(e) => updateFormField('supplierName', e.target.value)}
+                                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                placeholder="e.g. ACME Corporation"
+                            />
+                            {formErrors.supplierName && <p className="mt-1 text-xs text-red-600">{formErrors.supplierName}</p>}
+                        </div>
+
+                        {(formState.documentType === 'invoice' || formState.documentType === 'quote') && (
+                            <div>
+                                <label className="mb-1 block text-xs font-semibold text-slate-600">Amount</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={formState.amount}
+                                    onChange={(e) => updateFormField('amount', e.target.value)}
+                                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                    placeholder="0.00"
+                                />
+                                {formErrors.amount && <p className="mt-1 text-xs text-red-600">{formErrors.amount}</p>}
+                            </div>
+                        )}
+
+                        {formState.documentType === 'invoice' && (
+                            <>
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-slate-600">Invoice Number</label>
+                                    <input
+                                        type="text"
+                                        value={formState.invoiceNumber}
+                                        onChange={(e) => updateFormField('invoiceNumber', e.target.value)}
+                                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                        placeholder="INV-2026-001"
+                                    />
+                                    {formErrors.invoiceNumber && <p className="mt-1 text-xs text-red-600">{formErrors.invoiceNumber}</p>}
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-slate-600">Invoice Date</label>
+                                    <input
+                                        type="date"
+                                        value={formState.invoiceDate}
+                                        onChange={(e) => updateFormField('invoiceDate', e.target.value)}
+                                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                    />
+                                    {formErrors.invoiceDate && <p className="mt-1 text-xs text-red-600">{formErrors.invoiceDate}</p>}
+                                </div>
+                            </>
+                        )}
+
+                        {formState.documentType === 'quote' && (
+                            <>
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-slate-600">Quote Reference</label>
+                                    <input
+                                        type="text"
+                                        value={formState.quoteReference}
+                                        onChange={(e) => updateFormField('quoteReference', e.target.value)}
+                                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                        placeholder="QTE-2026-017"
+                                    />
+                                    {formErrors.quoteReference && <p className="mt-1 text-xs text-red-600">{formErrors.quoteReference}</p>}
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-slate-600">Valid Until</label>
+                                    <input
+                                        type="date"
+                                        value={formState.validUntil}
+                                        onChange={(e) => updateFormField('validUntil', e.target.value)}
+                                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                    />
+                                    {formErrors.validUntil && <p className="mt-1 text-xs text-red-600">{formErrors.validUntil}</p>}
+                                </div>
+                            </>
+                        )}
+
+                        {formState.documentType === 'certificate' && (
+                            <>
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-slate-600">Certificate Type</label>
+                                    <input
+                                        type="text"
+                                        value={formState.certificateType}
+                                        onChange={(e) => updateFormField('certificateType', e.target.value)}
+                                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                        placeholder="ISO 9001"
+                                    />
+                                    {formErrors.certificateType && <p className="mt-1 text-xs text-red-600">{formErrors.certificateType}</p>}
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-slate-600">Issuer</label>
+                                    <input
+                                        type="text"
+                                        value={formState.issuer}
+                                        onChange={(e) => updateFormField('issuer', e.target.value)}
+                                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                        placeholder="Certification Body"
+                                    />
+                                    {formErrors.issuer && <p className="mt-1 text-xs text-red-600">{formErrors.issuer}</p>}
+                                </div>
+                                <label className="flex items-center gap-2 text-sm text-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={formState.hasExpiry}
+                                        onChange={(e) => {
+                                            updateFormField('hasExpiry', e.target.checked);
+                                            if (!e.target.checked) {
+                                                updateFormField('expiryDate', '');
+                                            }
+                                        }}
+                                        className="h-4 w-4 rounded border-gray-300 text-sky-600"
+                                    />
+                                    This certificate has an expiry date
+                                </label>
+                                {formState.hasExpiry && (
+                                    <div>
+                                        <label className="mb-1 block text-xs font-semibold text-slate-600">Expiry Date</label>
+                                        <input
+                                            type="date"
+                                            value={formState.expiryDate}
+                                            onChange={(e) => updateFormField('expiryDate', e.target.value)}
+                                            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                        />
+                                        {formErrors.expiryDate && <p className="mt-1 text-xs text-red-600">{formErrors.expiryDate}</p>}
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
                 </Card>
             </div>

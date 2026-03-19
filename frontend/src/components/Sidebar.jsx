@@ -2,8 +2,8 @@ import { NavLink } from 'react-router-dom';
 import { Upload, FileText, Users, Brain, BarChart3, X, Sparkles } from 'lucide-react';
 
 export const navItems = [
-    { to: '/', label: 'Upload', icon: Upload, end: true },
-    { to: '/results', label: 'Document Results', icon: FileText, end: false },
+    { to: '/upload', label: 'Upload', icon: Upload, end: true },
+    { to: '/dashboard', label: 'Document Results', icon: FileText, end: false },
     { to: '/suppliers', label: 'Supplier CRM', icon: Users, end: false },
 ];
 

@@ -1,7 +1,23 @@
 import axios from 'axios';
 
-const configuredBaseUrl = process.env.REACT_APP_API_BASE_URL;
+function readViteApiBaseUrl() {
+    let value;
+    try {
+        value = import.meta.env.VITE_API_BASE_URL;
+    } catch {
+        value = undefined;
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+        return value.trim();
+    }
+
+    const fallback = process.env.VITE_API_BASE_URL || process.env.REACT_APP_API_BASE_URL;
+    return typeof fallback === 'string' ? fallback.trim() : '';
+}
+
+const configuredBaseUrl = readViteApiBaseUrl();
 export const isApiConfigured = typeof configuredBaseUrl === 'string' && configuredBaseUrl.trim().length > 0;
+export const apiBaseUrl = configuredBaseUrl;
 
 const apiClient = axios.create({
     baseURL: configuredBaseUrl || '',

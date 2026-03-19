@@ -1,12 +1,18 @@
-import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { LogOut, Menu, Sparkles } from 'lucide-react';
 import Sidebar from './Sidebar';
+import { apiBaseUrl, getApiErrorMessage, getHealth } from '../services/api';
+import { clearAuthToken } from '../services/auth';
 
 const PAGE_META = {
-    '/': {
+    '/upload': {
         title: 'Upload Workspace',
         subtitle: 'Ingest and queue new supplier documents for extraction.',
+    },
+    '/dashboard': {
+        title: 'Documents Dashboard',
+        subtitle: 'Monitor extracted fields, validation signals, and inconsistencies.',
     },
     '/results': {
         title: 'Documents Dashboard',
@@ -20,8 +26,43 @@ const PAGE_META = {
 
 export default function Layout() {
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
+    const [apiConnected, setApiConnected] = useState(false);
+    const [apiStatusLabel, setApiStatusLabel] = useState('API Down');
+    const navigate = useNavigate();
     const location = useLocation();
-    const currentMeta = PAGE_META[location.pathname] || PAGE_META['/'];
+    const currentMeta = PAGE_META[location.pathname] || PAGE_META['/dashboard'];
+
+    function handleLogout() {
+        clearAuthToken();
+        navigate('/login', { replace: true });
+    }
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function checkHealth() {
+            try {
+                await getHealth();
+                if (isMounted) {
+                    setApiConnected(true);
+                    setApiStatusLabel('API Connected');
+                }
+            } catch (error) {
+                if (isMounted) {
+                    setApiConnected(false);
+                    setApiStatusLabel('API Down');
+                    // Keep a clear message in console without breaking UI flow.
+                    console.warn(getApiErrorMessage(error, 'Unable to reach API health endpoint.'), apiBaseUrl);
+                }
+            }
+        }
+
+        checkHealth();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     return (
         <div className="min-h-screen overflow-hidden">
@@ -54,9 +95,21 @@ export default function Layout() {
                                 </div>
                             </div>
 
-                            <div className="hidden items-center gap-2 rounded-full border border-success/20 bg-success-soft px-3 py-2 text-xs font-semibold text-success-text shadow-sm sm:flex">
-                                <Sparkles className="h-3.5 w-3.5" />
-                                Operational workspace online
+                            <div className="hidden items-center gap-2 sm:flex">
+                                <div className={`items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-sm sm:flex ${apiConnected
+                                    ? 'border border-success/20 bg-success-soft text-success-text'
+                                    : 'border border-error/20 bg-error-soft text-error-text'
+                                    }`}>
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    {apiStatusLabel}
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                                >
+                                    <LogOut className="h-3.5 w-3.5" />
+                                    Deconnexion
+                                </button>
                             </div>
                         </div>
                     </header>
