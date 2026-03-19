@@ -18,9 +18,10 @@ class Settings(BaseSettings):
     MINIO_ACCESS_KEY: str
     MINIO_SECRET_KEY: str
     MINIO_SECURE: bool
-    MINIO_BUCKET: str
-    MINIO_CURATED_PREFIX: str
-    MINIO_VALIDATION_PREFIX: str
+    MINIO_BUCKET: str = "datalake"
+    MINIO_RAW_PREFIX: str = "raw/"
+    MINIO_CLEAN_PREFIX: str = "clean/"
+    MINIO_CURATED_PREFIX: str = "curated/"
 
     AIRFLOW_URL: str
     AIRFLOW_DAG_ID: str

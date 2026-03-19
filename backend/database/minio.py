@@ -19,10 +19,5 @@ def get_minio() -> Minio:
 
 def init_buckets() -> None:
     client = get_minio()
-    for bucket in [
-        settings.MINIO_BUCKET_RAW,
-        settings.MINIO_BUCKET_CLEAN,
-        settings.MINIO_BUCKET_CURATED,
-    ]:
-        if not client.bucket_exists(bucket):
-            client.make_bucket(bucket)
+    if not client.bucket_exists(settings.MINIO_BUCKET):
+        client.make_bucket(settings.MINIO_BUCKET)
