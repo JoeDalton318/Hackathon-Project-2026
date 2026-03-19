@@ -14,7 +14,7 @@ export default function RegisterPage() {
     const [errorMessage, setErrorMessage] = useState('');
 
     if (isAuthenticated()) {
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/upload" replace />;
     }
 
     async function handleSubmit(event) {
