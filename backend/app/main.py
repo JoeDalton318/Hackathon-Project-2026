@@ -9,7 +9,7 @@ import json
 import secrets
 import time
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
@@ -32,6 +32,7 @@ class LoginRequest(BaseModel):
 
 
 USERS: dict[str, dict[str, str]] = {}
+ACTIVE_WS_CONNECTIONS: list[WebSocket] = []
 
 
 def _base64url_encode(data: bytes) -> str:
@@ -116,44 +117,42 @@ def get_current_user(credentials: HTTPAuthorizationCredentials | None = Depends(
     return USERS[email]
 
 
-DOCUMENTS = [
-    {
-        "id": 1,
-        "filename": "invoice_ACME_2026_001.pdf",
-        "documentType": "invoice",
-        "supplier": "ACME Corporation",
-        "siren": "732829320",
-        "siret": "73282932000074",
-        "extractedAmount": 12500.0,
+async def broadcast_ws_event(event_type: str, payload: dict) -> None:
+    if not ACTIVE_WS_CONNECTIONS:
+        return
+
+    disconnected: list[WebSocket] = []
+    message = {"type": event_type, "payload": payload, "timestamp": int(time.time())}
+
+    for connection in ACTIVE_WS_CONNECTIONS:
+        try:
+            await connection.send_json(message)
+        except Exception:
+            disconnected.append(connection)
+
+    if disconnected:
+        for connection in disconnected:
+            if connection in ACTIVE_WS_CONNECTIONS:
+                ACTIVE_WS_CONNECTIONS.remove(connection)
+
+
+DOCUMENTS: list[dict] = []
+
+
+def build_document_record(file: UploadFile) -> dict:
+    next_id = len(DOCUMENTS) + 1
+    return {
+        "id": next_id,
+        "filename": file.filename,
+        "documentType": "unknown",
+        "supplier": "Unknown Supplier",
+        "siren": "",
+        "siret": "",
+        "extractedAmount": 0.0,
         "currency": "EUR",
-        "validationStatus": "validated",
+        "validationStatus": "review",
         "inconsistencies": [],
-    },
-    {
-        "id": 2,
-        "filename": "certificate_BNP_302.pdf",
-        "documentType": "certificate",
-        "supplier": "BNP Supplies",
-        "siren": "662042449",
-        "siret": "66204244900128",
-        "extractedAmount": 3200.5,
-        "currency": "EUR",
-        "validationStatus": "validated",
-        "inconsistencies": [],
-    },
-    {
-        "id": 3,
-        "filename": "invoice_TechCo_089.png",
-        "documentType": "invoice",
-        "supplier": "TechCo Solutions",
-        "siren": "552100554",
-        "siret": "55210055400019",
-        "extractedAmount": 8570.0,
-        "currency": "EUR",
-        "validationStatus": "inconsistent",
-        "inconsistencies": ["Amount mismatch"],
-    },
-]
+    }
 
 app = FastAPI(
     title="Hackathon Data Engineering API",
@@ -238,16 +237,71 @@ async def list_documents(_: dict = Depends(get_current_user)):
 async def upload_documents(files: list[UploadFile] = File(...), _: dict = Depends(get_current_user)):
     """Reçoit des fichiers et retourne un résumé pour le frontend."""
     uploaded = []
-    for index, file in enumerate(files, start=1):
+    for file in files:
+        document = build_document_record(file)
+        DOCUMENTS.append(document)
         uploaded.append(
             {
-                "id": index,
+                "id": document["id"],
                 "filename": file.filename,
                 "contentType": file.content_type,
             }
         )
 
+    await broadcast_ws_event(
+        "documents_updated",
+        {
+            "uploadedCount": len(uploaded),
+            "files": uploaded,
+        },
+    )
+
     return {"data": uploaded, "message": f"{len(uploaded)} file(s) uploaded"}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, token: str = Query(default="")):
+    if not token:
+        await websocket.close(code=1008, reason="Missing token")
+        return
+
+    try:
+        payload = decode_access_token(token)
+        email = payload.get("sub")
+        if not email or email not in USERS:
+            await websocket.close(code=1008, reason="Invalid user")
+            return
+    except HTTPException:
+        await websocket.close(code=1008, reason="Invalid token")
+        return
+
+    await websocket.accept()
+    ACTIVE_WS_CONNECTIONS.append(websocket)
+
+    await websocket.send_json(
+        {
+            "type": "connected",
+            "payload": {"message": "WebSocket connected", "email": email},
+            "timestamp": int(time.time()),
+        }
+    )
+
+    try:
+        while True:
+            message = await websocket.receive_text()
+            if message == "ping":
+                await websocket.send_json(
+                    {
+                        "type": "pong",
+                        "payload": {"message": "pong"},
+                        "timestamp": int(time.time()),
+                    }
+                )
+    except WebSocketDisconnect:
+        pass
+    finally:
+        if websocket in ACTIVE_WS_CONNECTIONS:
+            ACTIVE_WS_CONNECTIONS.remove(websocket)
 
 # TODO: Ajouter vos endpoints ici
 # - Upload de documents

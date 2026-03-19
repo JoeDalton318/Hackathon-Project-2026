@@ -4,6 +4,12 @@ import { LogOut, Menu, Sparkles } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { apiBaseUrl, getApiErrorMessage, getApiRootStatus, getHealth } from '../services/api';
 import { clearAuthToken } from '../services/auth';
+import {
+    connectWebSocket,
+    disconnectWebSocket,
+    subscribeWebSocket,
+    subscribeWebSocketStatus,
+} from '../services/ws';
 
 const PAGE_META = {
     '/upload': {
@@ -32,11 +38,14 @@ export default function Layout() {
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [apiConnected, setApiConnected] = useState(false);
     const [apiStatusLabel, setApiStatusLabel] = useState('API Down');
+    const [wsConnected, setWsConnected] = useState(false);
+    const [wsStatusLabel, setWsStatusLabel] = useState('WS Offline');
     const navigate = useNavigate();
     const location = useLocation();
     const currentMeta = PAGE_META[location.pathname] || PAGE_META['/dashboard'];
 
     function handleLogout() {
+        disconnectWebSocket();
         clearAuthToken();
         navigate('/login', { replace: true });
     }
@@ -65,6 +74,45 @@ export default function Layout() {
 
         return () => {
             isMounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        const unsubscribeStatus = subscribeWebSocketStatus((status) => {
+            if (status === 'connected') {
+                setWsConnected(true);
+                setWsStatusLabel('WS Connected');
+                return;
+            }
+
+            if (status === 'connecting') {
+                setWsConnected(false);
+                setWsStatusLabel('WS Connecting');
+                return;
+            }
+
+            if (status === 'error') {
+                setWsConnected(false);
+                setWsStatusLabel('WS Error');
+                return;
+            }
+
+            setWsConnected(false);
+            setWsStatusLabel('WS Offline');
+        });
+
+        const unsubscribeMessages = subscribeWebSocket((message) => {
+            if (message?.type === 'documents_updated') {
+                console.log('[WS] documents_updated', message.payload);
+            }
+        });
+
+        connectWebSocket();
+
+        return () => {
+            unsubscribeStatus();
+            unsubscribeMessages();
+            disconnectWebSocket();
         };
     }, []);
 
@@ -106,6 +154,13 @@ export default function Layout() {
                                     }`}>
                                     <Sparkles className="h-3.5 w-3.5" />
                                     {apiStatusLabel}
+                                </div>
+                                <div className={`items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-sm sm:flex ${wsConnected
+                                    ? 'border border-success/20 bg-success-soft text-success-text'
+                                    : 'border border-error/20 bg-error-soft text-error-text'
+                                    }`}>
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    {wsStatusLabel}
                                 </div>
                                 <button
                                     onClick={handleLogout}
