@@ -184,7 +184,7 @@ def perform_ocr(**context):
     except ImportError:
         logging.warning("Module nlp_ocr non disponible - Mode simulation")
         extracted_data = {
-            'document_type': 'unknown',
+            'document_type': 'inconnu',
             'overall_confidence': 0.0,
             'raw_text': 'Simulation OCR',
             'fields': {}
@@ -339,10 +339,15 @@ def callback_to_backend(**context):
         'blocked': 'error'
     }
     
+    # Normalisation du document_type pour correspondre aux valeurs attendues par le backend
+    _doc_type_raw = extracted_data.get('document_type') or 'inconnu'
+    _doc_type_map = {'unknown': 'inconnu'}
+    _doc_type = _doc_type_map.get(_doc_type_raw, _doc_type_raw)
+
     payload = {
         'document_id': document_info['document_id'],
         'status': status_map.get(decision, 'done'),
-        'document_type': extracted_data.get('document_type'),
+        'document_type': _doc_type,
         'extracted_data': extracted_data.get('fields', {}),
         'anomalies': anomalies,
         'error_message': None
@@ -351,13 +356,7 @@ def callback_to_backend(**context):
     # Appel de l'endpoint callback du Backend
     callback_url = BACKEND_API_CONFIG['base_url'] + '/api/internal/pipeline/result'
     
-    # Recuperation du secret partage avec le Backend
-    internal_secret = os.getenv('INTERNAL_API_SECRET')
-    if not internal_secret:
-        raise ValueError("INTERNAL_API_SECRET non defini dans .env")
-    
     headers = {
-        'X-Internal-Secret': internal_secret,
         'Content-Type': 'application/json'
     }
     
@@ -374,6 +373,9 @@ def callback_to_backend(**context):
         response.raise_for_status()
         
         logging.info(f"Callback reussi: {response.status_code}")
+        # Le backend retourne HTTP 204 No Content (pas de body JSON)
+        if response.status_code == 204 or not response.content:
+            return {"status": "ok"}
         return response.json()
         
     except requests.exceptions.RequestException as e:
@@ -429,6 +431,7 @@ def archive_document(**context):
     base_relative = f"{now.year}/{now.month:02d}/{now.day:02d}/{document_id}"
     
     archived_paths = {}
+    from minio.commonconfig import CopySource
     
     try:
         # 1. Copie du fichier original depuis raw/ vers curated/
@@ -438,7 +441,7 @@ def archive_document(**context):
         client.copy_object(
             bucket,
             original_dest,
-            f"{bucket}/{original_source}"
+            CopySource(bucket, original_source)
         )
         archived_paths['original'] = original_dest
         logging.info(f"Document original archive: {original_source} -> {original_dest}")
@@ -448,7 +451,7 @@ def archive_document(**context):
         client.copy_object(
             bucket,
             extraction_dest,
-            f"{bucket}/{clean_path}"
+            CopySource(bucket, clean_path)
         )
         archived_paths['extraction'] = extraction_dest
         logging.info(f"Extraction archive: {clean_path} -> {extraction_dest}")
@@ -460,7 +463,7 @@ def archive_document(**context):
             client.copy_object(
                 bucket,
                 validation_dest,
-                f"{bucket}/{validation_source}"
+                CopySource(bucket, validation_source)
             )
             archived_paths['validation'] = validation_dest
             logging.info(f"Validation archive: {validation_source} -> {validation_dest}")

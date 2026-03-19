@@ -1,12 +1,4 @@
-from pathlib import Path
-
-from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-ENV_FILE = PROJECT_ROOT / ".env"
-
-load_dotenv(ENV_FILE)
 
 
 class Settings(BaseSettings):
@@ -15,19 +7,18 @@ class Settings(BaseSettings):
     MONGO_PASSWORD: str
 
     MINIO_ENDPOINT: str
-    MINIO_ACCESS_KEY: str
-    MINIO_SECRET_KEY: str
+    MINIO_ROOT_USER: str
+    MINIO_ROOT_PASSWORD: str
     MINIO_SECURE: bool
     MINIO_BUCKET: str
+    MINIO_RAW_PREFIX: str
+    MINIO_CLEAN_PREFIX: str
     MINIO_CURATED_PREFIX: str
-    MINIO_VALIDATION_PREFIX: str
 
     AIRFLOW_URL: str
     AIRFLOW_DAG_ID: str
     AIRFLOW_USERNAME: str
     AIRFLOW_PASSWORD: str
-
-    INTERNAL_API_SECRET: str
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001"]
 
@@ -38,7 +29,10 @@ class Settings(BaseSettings):
     INSEE_BASE_URL: str
     INSEE_API_KEY: str
 
-    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 settings = Settings()

@@ -31,8 +31,8 @@ RUN pip install --no-cache-dir -e .
 ENV PYTHONUNBUFFERED=1 \
     LOG_LEVEL=INFO \
     MINIO_ENDPOINT="" \
-    MINIO_ACCESS_KEY="" \
-    MINIO_SECRET_KEY="" \
+    MINIO_ROOT_USER="" \
+    MINIO_ROOT_PASSWORD="" \
     MINIO_SECURE="false"
 
 EXPOSE 8000

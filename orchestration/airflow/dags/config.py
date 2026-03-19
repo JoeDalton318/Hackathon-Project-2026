@@ -9,8 +9,8 @@ import os
 # ARCHITECTURE: 1 bucket unique avec prefixes (raw/, clean/, curated/)
 MINIO_CONFIG = {
     'endpoint': os.getenv('MINIO_ENDPOINT', 'minio:9000'),
-    'access_key': os.getenv('MINIO_ACCESS_KEY', 'minioadmin'),
-    'secret_key': os.getenv('MINIO_SECRET_KEY', 'minioadmin123'),
+    'access_key': os.getenv('MINIO_ROOT_USER', 'minioadmin'),
+    'secret_key': os.getenv('MINIO_ROOT_PASSWORD', 'minioadmin123'),
     'secure': os.getenv('MINIO_SECURE', 'false').lower() == 'true',
     'bucket': os.getenv('MINIO_BUCKET', 'datalake'),  # Bucket unique
     'prefixes': {
@@ -30,7 +30,6 @@ MONGODB_CONFIG = {
 # Utilisee pour le callback apres traitement pipeline
 BACKEND_API_CONFIG = {
     'base_url': os.getenv('BACKEND_API_URL', 'http://backend:8000'),
-    'internal_secret': os.getenv('INTERNAL_API_SECRET'),
     'endpoints': {
         'callback': '/api/internal/pipeline/result',
         'crm_autofill': '/api/crm/auto-fill',

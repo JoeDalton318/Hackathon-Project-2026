@@ -21,8 +21,8 @@ def _get():
         try:
             from minio import Minio
             c = Minio(os.getenv("MINIO_ENDPOINT", "localhost:9000"),
-                      access_key=os.getenv("MINIO_ACCESS_KEY", "minioadmin"),
-                      secret_key=os.getenv("MINIO_SECRET_KEY", "minioadmin123"),
+                      access_key=os.getenv("MINIO_ROOT_USER", "minioadmin"),
+                      secret_key=os.getenv("MINIO_ROOT_PASSWORD", "minioadmin123"),
                       secure=os.getenv("MINIO_SECURE", "false").lower() == "true")
             if not c.bucket_exists(BUCKET): c.make_bucket(BUCKET)
             _client = c

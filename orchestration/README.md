@@ -76,7 +76,7 @@ Airflow reçoit trigger immédiat (pas de batch)
 
 **Task 5: `callback_backend`**
 - Formate payload selon schéma Backend: `PipelineCallbackPayload`
-- POST `/api/internal/pipeline/result` avec header `X-Internal-Secret`
+- POST `/api/internal/pipeline/result` vers le Backend
 - Backend met à jour MongoDB + WebSocket notification au Frontend
 
 **Task 6: `archive_document`** (parallèle à Task 5)
@@ -115,8 +115,8 @@ MONGO_DB=hackathon
 
 # MinIO
 MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin123
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin123
 MINIO_SECURE=False
 MINIO_BUCKET_RAW=raw
 MINIO_BUCKET_CLEAN=clean
@@ -130,7 +130,6 @@ AIRFLOW_PASSWORD=airflow
 
 # Backend API
 BACKEND_API_URL=http://localhost:8000
-INTERNAL_API_SECRET=your_secret_key_here
 API_TIMEOUT=10
 ```
 
@@ -257,7 +256,6 @@ POST http://localhost:8000/api/internal/pipeline/result
 
 ```
 Content-Type: application/json
-X-Internal-Secret: <INTERNAL_API_SECRET>
 ```
 
 ### Payload (PipelineCallbackPayload)
@@ -363,13 +361,13 @@ docker-compose exec airflow-scheduler airflow dags list
 - Vérifier `AIRFLOW_DAG_ID=doc_pipeline` dans `.env`
 - Activer API dans `airflow.cfg`: `auth_backend = airflow.api.auth.backend.basic_auth`
 
-### Callback Backend échoue (403 Forbidden)
+### Callback Backend échoue
 
-**Cause :** Secret `X-Internal-Secret` incorrect
+**Cause :** Endpoint Backend non accessible ou payload incorrect
 
 **Solution :**
-- Synchroniser `INTERNAL_API_SECRET` entre `.env` racine et config Backend
-- Vérifier header dans logs Airflow
+- Vérifier que le service backend est démarré
+- Vérifier le payload dans logs Airflow
 
 ### Module nlp_ocr / validation non trouvé
 
