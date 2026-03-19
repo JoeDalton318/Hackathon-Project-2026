@@ -75,7 +75,7 @@ export async function login(email, password) {
 
 export async function register(name, email, password) {
     try {
-        const response = await axios.post(`${AUTH_BASE_URL}/auth/register`, { name, email, password }, {
+        const response = await axios.post(`${AUTH_BASE_URL}/auth/register`, { nom: name, email, password }, {
             headers: {
                 'Content-Type': 'application/json',
             },
