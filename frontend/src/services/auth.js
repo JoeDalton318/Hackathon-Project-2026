@@ -56,7 +56,7 @@ export async function login(email, password) {
             },
         });
         const payload = response?.data ?? {};
-        console.log('[AUTH] POST /auth/login', payload);
+        console.log('[AUTH] POST /auth/login success');
 
         const token = extractToken(payload);
         if (token) {
@@ -81,7 +81,7 @@ export async function register(name, email, password) {
             },
         });
         const payload = response?.data ?? {};
-        console.log('[AUTH] POST /auth/register', payload);
+        console.log('[AUTH] POST /auth/register success');
 
         const token = extractToken(payload);
 
