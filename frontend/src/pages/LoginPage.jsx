@@ -14,7 +14,7 @@ export default function LoginPage() {
     const [errorMessage, setErrorMessage] = useState('');
 
     if (isAuthenticated()) {
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/upload" replace />;
     }
 
     const redirectTo = location.state?.from || '/upload';
