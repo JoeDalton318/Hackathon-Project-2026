@@ -1,5 +1,5 @@
 import { getAuthToken } from './auth';
-import { apiBaseUrl } from './api';
+import { apiRootUrl } from './api';
 
 let socket = null;
 let reconnectTimer = null;
@@ -66,7 +66,7 @@ export function connectWebSocket() {
     }
 
     shouldReconnect = true;
-    const wsBaseUrl = toWebSocketBaseUrl(apiBaseUrl || process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000');
+    const wsBaseUrl = toWebSocketBaseUrl(apiRootUrl || process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000');
     const wsUrl = `${wsBaseUrl}/ws?token=${encodeURIComponent(token)}`;
 
     socket = new WebSocket(wsUrl);

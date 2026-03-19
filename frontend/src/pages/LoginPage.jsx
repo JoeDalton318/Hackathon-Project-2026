@@ -14,10 +14,10 @@ export default function LoginPage() {
     const [errorMessage, setErrorMessage] = useState('');
 
     if (isAuthenticated()) {
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/" replace />;
     }
 
-    const redirectTo = location.state?.from || '/upload';
+    const redirectTo = location.state?.from || '/';
 
     async function handleSubmit(event) {
         event.preventDefault();

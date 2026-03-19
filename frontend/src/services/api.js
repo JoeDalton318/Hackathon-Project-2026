@@ -1,7 +1,21 @@
 import axios from 'axios';
 import { clearAuthToken, getAuthToken } from './auth';
 
-export const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || 'http://localhost:8000';
+function normalizeRootUrl(value) {
+    const trimmed = typeof value === 'string' ? value.trim() : '';
+    if (!trimmed) {
+        return 'http://localhost:8000';
+    }
+
+    return trimmed.replace(/\/+$/, '');
+}
+
+function normalizeApiBaseUrl(rootUrl) {
+    return rootUrl.endsWith('/api') ? rootUrl : `${rootUrl}/api`;
+}
+
+export const apiRootUrl = normalizeRootUrl(process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL);
+export const apiBaseUrl = normalizeApiBaseUrl(apiRootUrl);
 
 const api = axios.create({
     baseURL: apiBaseUrl,
@@ -80,7 +94,11 @@ export async function getDocuments() {
     try {
         const response = await api.get('/documents');
         const payload = response?.data ?? {};
-        const documents = Array.isArray(payload?.data) ? payload.data : [];
+        const documents = Array.isArray(payload?.data)
+            ? payload.data
+            : Array.isArray(payload?.data?.items)
+                ? payload.data.items
+                : [];
         console.log('[API] GET /documents payload', payload);
         console.log('[API] GET /documents extracted data', documents);
         return {
@@ -99,7 +117,7 @@ export async function uploadDocuments(files) {
     });
 
     try {
-        const response = await api.post('/upload', formData, {
+        const response = await api.post('/documents/upload', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

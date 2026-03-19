@@ -154,25 +154,24 @@ export default function UploadPage() {
             setStatusMessage('Uploading documents...');
             const uploadResponse = await uploadDocuments(files);
             const uploadedIds = Array.isArray(uploadResponse)
-                ? uploadResponse.map((item) => item?.id).filter(Boolean)
+                ? uploadResponse.map((item) => item?.document_id || item?.id).filter(Boolean)
                 : [];
 
+            if (uploadedIds.length === 0) {
+                throw new Error('Upload completed but no document ID was returned by backend.');
+            }
+
             setStatusMessage('Starting document processing...');
-            await processDocuments(
-                uploadedIds.length > 0
-                    ? { documentIds: uploadedIds }
-                    : { documentNames: files.map((file) => file.name) }
-            );
+            await processDocuments({ documentIds: uploadedIds });
+
+            setDone(true);
+            setTimeout(() => navigate('/results'), 1400);
         } catch (error) {
-            setErrorMessage(`${getApiErrorMessage(error, 'Backend unavailable.')} Falling back to mock processing.`);
-            setStatusMessage('Backend unavailable, running mock processing flow...');
-            await new Promise((resolve) => setTimeout(resolve, 1800));
+            setErrorMessage(getApiErrorMessage(error, 'Unable to process documents with backend API.'));
+            setStatusMessage('');
         } finally {
             setProcessing(false);
         }
-
-        setDone(true);
-        setTimeout(() => navigate('/results'), 1400);
     };
 
     if (done) {

@@ -35,11 +35,17 @@ airflow/logs/*
 airflow/airflow.db
 airflow/airflow.cfg
 airflow/webserver_config.py
+orchestration/airflow/logs/*
+!orchestration/airflow/logs/.gitkeep
+orchestration/airflow/airflow.db
+orchestration/airflow/airflow.cfg
+orchestration/airflow/webserver_config.py
 
 # Node / React
 node_modules/
 npm-debug.log*
 react/build/
+frontend/build/
 .pnp
 .pnp.js
 

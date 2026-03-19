@@ -1,7 +1,48 @@
 import axios from 'axios';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
-const AUTH_BASE_URL = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+function normalizeRootUrl(value) {
+    const trimmed = typeof value === 'string' ? value.trim() : '';
+    if (!trimmed) {
+        return 'http://localhost:8000';
+    }
+
+    return trimmed.replace(/\/+$/, '');
+}
+
+const AUTH_ROOT_URL = normalizeRootUrl(process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL);
+const AUTH_API_BASE_URL = AUTH_ROOT_URL.endsWith('/api') ? AUTH_ROOT_URL : `${AUTH_ROOT_URL}/api`;
+
+function toReadableErrorDetail(detail) {
+    if (typeof detail === 'string') {
+        return detail;
+    }
+
+    if (Array.isArray(detail)) {
+        return detail
+            .map((entry) => {
+                if (typeof entry === 'string') {
+                    return entry;
+                }
+
+                if (entry && typeof entry === 'object') {
+                    const location = Array.isArray(entry.loc) ? entry.loc.join('.') : '';
+                    const message = typeof entry.msg === 'string' ? entry.msg : 'Invalid value';
+                    return location ? `${location}: ${message}` : message;
+                }
+
+                return 'Invalid request payload';
+            })
+            .join(' | ');
+    }
+
+    if (detail && typeof detail === 'object') {
+        return detail.message || JSON.stringify(detail);
+    }
+
+    return '';
+}
 
 function extractToken(payload) {
     return (
@@ -33,9 +74,11 @@ export function isAuthenticated() {
 
 export function getAuthErrorMessage(error, fallbackMessage = 'Authentication failed.') {
     if (axios.isAxiosError(error)) {
+        const readableDetail = toReadableErrorDetail(error.response?.data?.detail);
         return (
             error.response?.data?.message ||
-            error.response?.data?.detail ||
+            readableDetail ||
+            error.response?.data?.error ||
             error.message ||
             fallbackMessage
         );
@@ -50,7 +93,7 @@ export function getAuthErrorMessage(error, fallbackMessage = 'Authentication fai
 
 export async function login(email, password) {
     try {
-        const response = await axios.post(`${AUTH_BASE_URL}/auth/login`, { email, password }, {
+        const response = await axios.post(`${AUTH_API_BASE_URL}/auth/login`, { email, password }, {
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -75,7 +118,7 @@ export async function login(email, password) {
 
 export async function register(name, email, password) {
     try {
-        const response = await axios.post(`${AUTH_BASE_URL}/auth/register`, { name, email, password }, {
+        const response = await axios.post(`${AUTH_API_BASE_URL}/auth/register`, { nom: name, name, email, password }, {
             headers: {
                 'Content-Type': 'application/json',
             },
