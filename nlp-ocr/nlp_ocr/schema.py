@@ -154,7 +154,11 @@ class ExtractionResult(BaseModel):
     fields_reliable:     int       = 0
     extraction_warnings: list[str] = Field(default_factory=list)
     created_at:          str       = Field(
+<<<<<<< HEAD
+        default_factory=lambda: datetime.datetime.utcnow().isoformat()
+=======
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+>>>>>>> origin/maria
     )
 
     def get_typed_data(self):

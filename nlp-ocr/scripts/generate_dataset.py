@@ -40,7 +40,11 @@ FORMES_JURIDIQUES = ["SARL", "SAS", "SASU", "SA", "EURL", "SNC"]
 TVA_TAUX          = [20.0, 10.0, 5.5, 2.1]
 
 
+<<<<<<< HEAD
+# �EUR�EUR Génération de données d'entreprise �EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR
+=======
 # ── Génération de données d'entreprise ──────────────────────────────────────
+>>>>>>> origin/maria
 
 def _luhn_ok(number: str) -> bool:
     total = 0
@@ -87,7 +91,11 @@ def _date_past(days: int = 365) -> date:
     return date.today() - timedelta(days=random.randint(1, days))
 
 
+<<<<<<< HEAD
+# �EUR�EUR Générateurs PDF �EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR
+=======
 # ── Générateurs PDF ──────────────────────────────────────────────────────────
+>>>>>>> origin/maria
 
 class _PDF(FPDF):
     def header(self): pass
@@ -96,12 +104,20 @@ class _PDF(FPDF):
 
 def _company_block(pdf: _PDF, c: dict, x: float, y: float):
     pdf.set_xy(x, y)
+<<<<<<< HEAD
+    pdf.set_font("Helvetica", "B", 11); pdf.cell(0, 6, c["name"], new_x="LMARGIN", new_y="NEXT")
+=======
     pdf.set_font("Helvetica", "B", 11); pdf.cell(0, 6, c["name"], ln=True)
+>>>>>>> origin/maria
     pdf.set_font("Helvetica", "", 9)
     for line in [c["address"], f"{c['zip']} {c['city']}",
                  f"SIRET : {c['siret']}", f"TVA : {c['tva']}",
                  f"Tél : {c['phone']}", f"Email : {c['email']}"]:
+<<<<<<< HEAD
+        pdf.set_x(x); pdf.cell(0, 5, line, new_x="LMARGIN", new_y="NEXT")
+=======
         pdf.set_x(x); pdf.cell(0, 5, line, ln=True)
+>>>>>>> origin/maria
 
 
 def gen_facture_pdf(emetteur: dict, client: dict, falsified: bool = False) -> bytes:
@@ -110,10 +126,17 @@ def gen_facture_pdf(emetteur: dict, client: dict, falsified: bool = False) -> by
     num   = f"FAC-{date.today().year}-{random.randint(1000,9999)}"
     d_em  = _date_past(180); d_ec = d_em + timedelta(days=30)
 
+<<<<<<< HEAD
+    pdf.set_font("Helvetica", "B", 18); pdf.cell(0, 10, "FACTURE", align="C", new_x="LMARGIN", new_y="NEXT"); pdf.ln(2)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(95, 6, f"N° : {num}"); pdf.cell(0, 6, f"Date d'émission : {d_em.strftime('%d/%m/%Y')}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(95, 6, "");            pdf.cell(0, 6, f"Date d'échéance : {d_ec.strftime('%d/%m/%Y')}", new_x="LMARGIN", new_y="NEXT")
+=======
     pdf.set_font("Helvetica", "B", 18); pdf.cell(0, 10, "FACTURE", align="C", ln=True); pdf.ln(2)
     pdf.set_font("Helvetica", "", 10)
     pdf.cell(95, 6, f"N° : {num}"); pdf.cell(0, 6, f"Date d'émission : {d_em.strftime('%d/%m/%Y')}", ln=True)
     pdf.cell(95, 6, "");            pdf.cell(0, 6, f"Date d'échéance : {d_ec.strftime('%d/%m/%Y')}", ln=True)
+>>>>>>> origin/maria
     pdf.ln(4)
 
     y0 = pdf.get_y()
@@ -144,6 +167,18 @@ def gen_facture_pdf(emetteur: dict, client: dict, falsified: bool = False) -> by
     pdf.ln(4); pdf.set_font("Helvetica", "", 10)
     for lbl, val in [(f"Montant HT", f"{total_ht:,.2f} EUR".replace(",", " ")),
                      (f"TVA ({taux}%)", f"{total_tva:,.2f} EUR".replace(",", " "))]:
+<<<<<<< HEAD
+        pdf.cell(140, 7, ""); pdf.cell(0, 7, f"{lbl} : {val}", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "B", 11); pdf.cell(140, 8, "")
+    pdf.cell(0, 8, f"Total TTC : {total_ttc:,.2f} EUR".replace(",", " "), new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(8); pdf.set_font("Helvetica", "B", 10); pdf.cell(0, 6, "Coordonnées bancaires :", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.cell(0, 5, f"IBAN : {emetteur['iban']}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 5, f"BIC  : {emetteur['bic']}",  ln=True)
+    pdf.cell(0, 5, f"SIRET : {display_siret}",    ln=True)
+    return pdf.output()
+=======
         pdf.cell(140, 7, ""); pdf.cell(0, 7, f"{lbl} : {val}", ln=True)
     pdf.set_font("Helvetica", "B", 11); pdf.cell(140, 8, "")
     pdf.cell(0, 8, f"Total TTC : {total_ttc:,.2f} EUR".replace(",", " "), ln=True)
@@ -154,6 +189,7 @@ def gen_facture_pdf(emetteur: dict, client: dict, falsified: bool = False) -> by
     pdf.cell(0, 5, f"BIC  : {emetteur['bic']}",  ln=True)
     pdf.cell(0, 5, f"SIRET : {display_siret}",    ln=True)
     return pdf.output(dest="S").encode("latin-1")
+>>>>>>> origin/maria
 
 
 def gen_urssaf_pdf(company: dict, expired: bool = False) -> bytes:
@@ -163,6 +199,25 @@ def gen_urssaf_pdf(company: dict, expired: bool = False) -> bytes:
              if expired else d_em + timedelta(days=180))
     num  = f"ATT{random.randint(100000, 999999)}"
 
+<<<<<<< HEAD
+    pdf.set_font("Helvetica", "B", 14); pdf.cell(0, 10, "ATTESTATION DE VIGILANCE", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "B", 11); pdf.cell(0, 8, "URSSAF Île-de-France", align="C", new_x="LMARGIN", new_y="NEXT"); pdf.ln(6)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, f"N° d'attestation : {num}", new_x="LMARGIN", new_y="NEXT"); pdf.ln(2)
+    pdf.cell(0, 6, "Cette attestation certifie que l'entreprise :", new_x="LMARGIN", new_y="NEXT"); pdf.ln(2)
+    pdf.set_font("Helvetica", "B", 10); pdf.cell(0, 6, company["name"], new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, f"SIRET : {company['siret']}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, f"{company['address']}, {company['zip']} {company['city']}", new_x="LMARGIN", new_y="NEXT"); pdf.ln(4)
+    pdf.multi_cell(0, 6, "est à jour de ses obligations de déclaration et de paiement auprès de l'URSSAF.")
+    pdf.ln(4)
+    pdf.cell(0, 6, f"Date d'émission   : {d_em.strftime('%d/%m/%Y')}",  ln=True)
+    pdf.cell(0, 6, f"Date d'expiration : {d_exp.strftime('%d/%m/%Y')}", new_x="LMARGIN", new_y="NEXT"); pdf.ln(6)
+    pdf.set_font("Helvetica", "I", 9)
+    pdf.multi_cell(0, 5, f"Document valide du {d_em.strftime('%d/%m/%Y')} au {d_exp.strftime('%d/%m/%Y')}. "
+                  "Vérifiable sur net-entreprises.fr")
+    return pdf.output()
+=======
     pdf.set_font("Helvetica", "B", 14); pdf.cell(0, 10, "ATTESTATION DE VIGILANCE", align="C", ln=True)
     pdf.set_font("Helvetica", "B", 11); pdf.cell(0, 8, "URSSAF Île-de-France", align="C", ln=True); pdf.ln(6)
     pdf.set_font("Helvetica", "", 10)
@@ -180,21 +235,34 @@ def gen_urssaf_pdf(company: dict, expired: bool = False) -> bytes:
     pdf.multi_cell(0, 5, f"Document valide du {d_em.strftime('%d/%m/%Y')} au {d_exp.strftime('%d/%m/%Y')}. "
                   "Vérifiable sur net-entreprises.fr")
     return pdf.output(dest="S").encode("latin-1")
+>>>>>>> origin/maria
 
 
 def gen_rib_pdf(company: dict) -> bytes:
     pdf = _PDF(); pdf.add_page()
+<<<<<<< HEAD
+    pdf.set_font("Helvetica", "B", 14); pdf.cell(0, 10, "RELEVÉ D'IDENTITÉ BANCAIRE (RIB)", align="C", new_x="LMARGIN", new_y="NEXT"); pdf.ln(6)
+=======
     pdf.set_font("Helvetica", "B", 14); pdf.cell(0, 10, "RELEVÉ D'IDENTITÉ BANCAIRE (RIB)", align="C", ln=True); pdf.ln(6)
+>>>>>>> origin/maria
     pdf.set_font("Helvetica", "", 10)
     for line in [f"Titulaire : {company['name']}", f"SIRET : {company['siret']}",
                  f"Adresse : {company['address']}, {company['zip']} {company['city']}",
                  "", "Domiciliation : BNP Paribas",
                  f"IBAN : {company['iban']}", f"BIC  : {company['bic']}"]:
+<<<<<<< HEAD
+        pdf.cell(0, 7, line, new_x="LMARGIN", new_y="NEXT")
+    return pdf.output()
+
+
+# �EUR�EUR Dégradation d'image �EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR
+=======
         pdf.cell(0, 7, line, ln=True)
     return pdf.output(dest="S").encode("latin-1")
 
 
 # ── Dégradation d'image ──────────────────────────────────────────────────────
+>>>>>>> origin/maria
 
 def degrade(img: np.ndarray, mode: str) -> np.ndarray:
     if mode == "blur":
@@ -222,7 +290,11 @@ def pdf_to_image(pdf_bytes: bytes) -> np.ndarray:
         return np.ones((800, 600, 3), dtype=np.uint8) * 255
 
 
+<<<<<<< HEAD
+# �EUR�EUR Assemblage du dataset �EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR�EUR
+=======
 # ── Assemblage du dataset ────────────────────────────────────────────────────
+>>>>>>> origin/maria
 
 def build_dataset(output_dir: Path, count: int = 60) -> list[dict]:
     (output_dir / "pdfs").mkdir(parents=True, exist_ok=True)
@@ -292,3 +364,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     random.seed(args.seed); Faker.seed(args.seed)
     build_dataset(Path(args.output), count=args.count)
+<<<<<<< HEAD
+
+=======
+>>>>>>> origin/maria
