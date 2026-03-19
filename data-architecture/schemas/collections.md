@@ -37,7 +37,7 @@ Clé métier : `document_id` (UUID string).
 | `user_id` | string | oui | Référence `users.user_id` (UUID). |
 | `original_filename` | string | oui | Nom du fichier uploadé. |
 | `mime_type` | string | non | application/pdf, image/*, etc. |
-| `minio_path` | string | oui | Clé d’objet dans le bucket MinIO partagé (ex. `raw/{document_id}/{filename}`). Un seul bucket `datalake` avec préfixes raw/clean/curated. |
+| `minio_path` | string | oui | Clé d’objet dans le bucket **`datalake`** : préfixes **`raw/`** (upload), **`clean/`** (pipeline), **`curated/`** (données finales). Variables : `MINIO_BUCKET`, `MINIO_RAW_PREFIX`, `MINIO_CLEAN_PREFIX`, `MINIO_CURATED_PREFIX`. |
 | `status` | string | oui | `pending`, `processing`, `ocr_done`, `extraction_done`, `done`, `error`. |
 | `document_type` | string | non | `facture`, `devis`, `kbis`, `rib`, `attestation_urssaf`, `attestation_siret`, `unknown`. |
 | `extracted_data` | object | non | Données structurées extraites par l’IA. |
@@ -61,7 +61,7 @@ Clé métier : `document_id` (UUID string).
   "user_id": "u1u2u3u4-u5u6-7890-user-abcdef123456",
   "original_filename": "facture-2026-001.pdf",
   "mime_type": "application/pdf",
-  "minio_path": "bronze/uploads/u1u2u3u4/batch456/facture-2026-001.pdf",
+  "minio_path": "raw/a1b2c3d4-e5f6-7890-abcd-ef1234567890/facture-2026-001.pdf",
   "status": "done",
   "document_type": "facture",
   "extracted_data": {

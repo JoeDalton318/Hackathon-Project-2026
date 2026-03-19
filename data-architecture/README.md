@@ -10,7 +10,7 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 
 - **Variable d’environnement** (à configurer côté backend / orchestration) :  
   `MONGO_URL=mongodb+srv://<user>:<password>@hackaton.dcvuugn.mongodb.net/?appName=hackaton`
-- Ne jamais commiter le mot de passe dans le dépôt. Utiliser un fichier `.env` (voir `.env.example` à la racine du projet).
+- Ne jamais commiter le mot de passe dans le dépôt. Utiliser un fichier **`backend/.env`** (non versionné).
 - Le **backend (FastAPI)** et éventuellement le **pipeline (Airflow)** se connectent à Atlas via cette URL.
 
 ---
@@ -20,7 +20,7 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Frontend   │────>│  Backend    │────>│  MinIO      │
-│  (Upload)   │     │  (FastAPI)  │     │  (Bronze)   │
+│  (Upload)   │     │  (FastAPI)  │     │  (Raw)      │
 └─────────────┘     └──────┬──────┘     └──────┬──────┘
                            │                    │
                            │ 1. Enregistre      │ Fichiers bruts
@@ -39,18 +39,18 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
                            ▼                    │
                     ┌─────────────┐             │
                     │  Airflow    │────────────>│ 3. Lit fichier
-                    │  (OCR →     │             │    depuis Bronze
+                    │  (OCR →     │             │    depuis raw/
                     │   IA →      │             │
                     │   Validation)│             │
                     └──────┬──────┘             │
                            │ 4. Écrit résultats │
-                           │    MinIO Silver +  │
+                           │    MinIO clean/ +  │
                            │    met à jour      │
                            │    MongoDB         │
                            ▼                    ▼
                     ┌─────────────┐     ┌─────────────┐
                     │  MongoDB    │     │  MinIO      │
-                    │  documents  │     │  (Silver)   │
+                    │  documents  │     │  (Clean)    │
                     │  (status:   │     │  ocr.txt,   │
                     │  done,      │     │  extraction │
                     │  extracted_ │     │  .json      │
@@ -72,13 +72,13 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 
 | Étape | Qui | Quoi |
 |-------|-----|------|
-| 1 | Backend | Reçoit l’upload, stocke le fichier dans **MinIO (Bronze)** et crée un document dans **MongoDB** (`documents`) avec `status: "pending"`. |
+| 1 | Backend | Reçoit l’upload, stocke le fichier dans **MinIO** sous le préfixe **raw/** (bucket `datalake`) et crée un document dans **MongoDB** (`documents`) avec `status: "pending"`. |
 | 2 | Backend | Déclenche le **DAG Airflow** (traitement asynchrone). |
-| 3 | Pipeline (Airflow) | Lit le fichier depuis MinIO Bronze, fait **OCR → IA (classification) → Validation** (Sirene, inter-documents). |
-| 4 | Pipeline | Écrit les résultats dans **MinIO (Silver)** (ocr.txt, extraction.json) et met à jour le document dans **MongoDB** : `status: "done"`, `extracted_data`, `document_type`, `anomalies`, etc. |
+| 3 | Pipeline (Airflow) | Lit le fichier depuis **raw/**, fait **OCR → IA (classification) → Validation** (Sirene, inter-documents). |
+| 4 | Pipeline | Écrit les résultats sous **clean/** (OCR, extraction) et éventuellement **curated/** ; met à jour **MongoDB** : `status: "done"`, `extracted_data`, `document_type`, `anomalies`, etc. |
 | 5 | Frontend | Appelle l’API pour récupérer la liste et le détail des documents ; l’API lit dans **MongoDB** (et peut servir le fichier depuis MinIO). |
 
-**MongoDB** sert à stocker les **métadonnées** et le **résultat d’extraction** (`extracted_data`, `anomalies`). Les **fichiers** et le **texte OCR** sont dans **MinIO** (Bronze = brut, Silver = traité).
+**MongoDB** sert à stocker les **métadonnées** et le **résultat d’extraction** (`extracted_data`, `anomalies`). Les **fichiers** sont dans **MinIO** : un bucket **`datalake`** avec les préfixes **raw/** (brut), **clean/** (traité par le pipeline), **curated/** (données prêtes / validation selon convention d’équipe).
 
 ---
 
@@ -113,7 +113,7 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 | `user_id` | string | Référence vers `users.user_id` (propriétaire). |
 | `original_filename` | string | Nom du fichier tel qu’uploadé. |
 | `mime_type` | string | Ex. `application/pdf`, `image/png`. |
-| `minio_path` | string | Chemin du fichier dans MinIO (Bronze ou Silver selon convention). |
+| `minio_path` | string | Clé d’objet dans le bucket `datalake` (ex. préfixe **raw/** pour l’upload initial). |
 | `status` | string | `"pending"`, `"processing"`, `"ocr_done"`, `"extraction_done"`, `"done"`, `"error"`. |
 | `document_type` | string | Type détecté : `facture`, `devis`, `kbis`, `rib`, `attestation_urssaf`, `attestation_siret`, `unknown`. |
 | `extracted_data` | object | Données structurées extraites par l’IA. |
@@ -128,77 +128,88 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 
 ---
 
-## 4. Architecture MinIO – un bucket partagé (datalake) + préfixes
+## 4. Architecture MinIO – 1 bucket + 3 préfixes
 
-**Backend, OCR et validation** utilisent la **même instance MinIO** : un seul bucket (`datalake`) avec des **préfixes** pour les couches Raw, Clean et Curated. Connexion via les variables du `.env` à la racine du projet.
+**Backend, OCR et validation** partagent la **même instance MinIO** et **un seul bucket** : `datalake`. Les trois couches (Raw, Clean, Curated) sont des **préfixes** dans ce bucket, configurés dans le `.env` (souvent **`backend/.env`** pour FastAPI).
 
-| Variable d’environnement     | Rôle |
-|------------------------------|------|
-| `MINIO_ENDPOINT`             | Ex. `localhost:9000` (ou host du serveur MinIO partagé). |
-| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | Identifiants (ex. `minioadmin` / `minioadmin123`). |
-| `MINIO_SECURE`               | `false` en local, `true` si HTTPS. |
-| `MINIO_BUCKET`               | **Un seul bucket** partagé, ex. `datalake`. |
-| `MINIO_RAW_PREFIX`           | Préfixe zone Raw, ex. `raw/`. |
-| `MINIO_CURATED_PREFIX`       | Préfixe zone Curated, ex. `curated/`. |
-| `MINIO_VALIDATION_PREFIX`    | Préfixe résultats de validation, ex. `curated/validation/`. |
+| Variable d’environnement | Rôle |
+|--------------------------|------|
+| `MINIO_ENDPOINT` | Ex. `localhost:9000` (ou host du serveur MinIO partagé). |
+| `MINIO_ACCESS_KEY` | Identifiant (ex. `minioadmin`). |
+| `MINIO_SECRET_KEY` | Secret (ex. `minioadmin123`). |
+| `MINIO_SECURE` | `false` en local, `true` si HTTPS. |
+| `MINIO_BUCKET` | **Un seul bucket** : `datalake`. |
+| `MINIO_RAW_PREFIX` | Préfixe Raw : `raw/` |
+| `MINIO_CLEAN_PREFIX` | Préfixe Clean : `clean/` |
+| `MINIO_CURATED_PREFIX` | Préfixe Curated : `curated/` |
 
-**Exemple de `.env` (aligné OCR / validation) :**
+**Exemple de `.env` (référence projet) :**
 ```env
 MINIO_ENDPOINT=localhost:9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin123
 MINIO_SECURE=false
 MINIO_BUCKET=datalake
+MINIO_RAW_PREFIX=raw/
+MINIO_CLEAN_PREFIX=clean/
 MINIO_CURATED_PREFIX=curated/
-MINIO_VALIDATION_PREFIX=curated/validation/
 ```
 
 ---
 
-### 4.1 Zone Raw – documents bruts
+### 4.1 Zone Raw (`MINIO_RAW_PREFIX`)
 
-**Rôle :** Fichiers **tels qu’uploadés** (backend).  
-**Préfixe :** `raw/` (ou valeur de `MINIO_RAW_PREFIX`).
+**Rôle :** Fichiers **tels qu’uploadés** par le backend.
 
-**Clé d’objet :**
+**Clé d’objet type :**
 ```
 raw/{document_id}/{filename}
 ```
-- `document_id` : UUID du document (clé métier MongoDB).
+
+- `document_id` : UUID du document (clé métier MongoDB).  
 - `filename` : nom du fichier original.
 
-**MongoDB :** `documents.minio_path` contient cette **clé complète** (avec préfixe). L’API génère des URLs de téléchargement via presigned URL sur le bucket `MINIO_BUCKET` avec cette clé.
+**MongoDB :** `documents.minio_path` stocke la **clé complète** (avec préfixe). L’API utilise le bucket `datalake` + cette clé pour les presigned URLs.
 
-**Qui écrit :** Backend à l’upload. **Qui lit :** Backend (presigned URL) ; pipeline OCR.
-
----
-
-### 4.2 Zone Clean – résultats par document (OCR / extraction)
-
-**Rôle :** Artefacts du pipeline (OCR, extraction) par document.  
-**Préfixe :** convention à aligner avec le pipeline (ex. `clean/`).  
-**Qui écrit :** Pipeline (Airflow / OCR). **Qui lit :** Backend, validation.
+**Qui écrit :** Backend à l’upload. **Qui lit :** Backend (téléchargement) ; pipeline OCR.
 
 ---
 
-### 4.3 Zone Curated – agrégations et validation
+### 4.2 Zone Clean (`MINIO_CLEAN_PREFIX`)
 
-**Rôle :** Données agrégées, exports, et **résultats de validation**.  
-**Préfixes :** `curated/` et `curated/validation/` (`MINIO_CURATED_PREFIX`, `MINIO_VALIDATION_PREFIX`).  
-**Qui écrit :** Jobs Airflow, API, module de validation. **Qui lit :** Backend, CRM, conformité.
+**Rôle :** Artefacts du pipeline (OCR, extraction, fichiers intermédiaires) par document.
+
+**Clé d’objet type :** `clean/{document_id}/...` (convention à aligner avec le DAG Airflow / OCR).
+
+**Qui écrit :** Pipeline (Airflow, OCR). **Qui lit :** Backend, module de validation.
+
+---
+
+### 4.3 Zone Curated (`MINIO_CURATED_PREFIX`)
+
+**Rôle :** Données **prêtes à l’emploi** : agrégations, exports, résultats de validation ou rapports finaux (sous-chemins possibles sous `curated/`, ex. `curated/validation/`, selon convention d’équipe — sans variable d’env dédiée si tout passe par le préfixe `curated/`).
+
+**Qui écrit :** Jobs Airflow, API, validation. **Qui lit :** Backend, CRM, conformité.
 
 ---
 
 ### 4.4 Récapitulatif
 
-| Couche   | Préfixe / variable           | Usage |
-|----------|-----------------------------|-------|
-| **Raw**  | `raw/` (`MINIO_RAW_PREFIX`)  | Upload backend ; lecture OCR. |
-| **Clean**| à définir avec le pipeline  | OCR, extraction par document. |
-| **Curated** | `curated/`               | Agrégations, exports. |
-| **Validation** | `curated/validation/` | Résultats de validation. |
+| Couche | Variable | Préfixe | Usage |
+|--------|----------|---------|--------|
+| **Raw** | `MINIO_RAW_PREFIX` | `raw/` | Upload initial ; lecture par le pipeline. |
+| **Clean** | `MINIO_CLEAN_PREFIX` | `clean/` | OCR, extraction, artefacts intermédiaires. |
+| **Curated** | `MINIO_CURATED_PREFIX` | `curated/` | Données finales, exports, validation (sous-dossiers possibles). |
 
-Un seul bucket **`MINIO_BUCKET`** (ex. `datalake`) pour tout le projet. MongoDB stocke la **clé d’objet** dans `minio_path` et les données structurées dans `extracted_data` et `anomalies`.
+**Structure logique dans MinIO :**
+```
+datalake/
+├── raw/          ← MINIO_RAW_PREFIX
+├── clean/        ← MINIO_CLEAN_PREFIX
+└── curated/      ← MINIO_CURATED_PREFIX
+```
+
+MongoDB ne stocke **pas** les fichiers ; il stocke la **clé d’objet** dans `minio_path` et les champs `extracted_data` / `anomalies`.
 
 ---
 
@@ -213,7 +224,7 @@ Un seul bucket **`MINIO_BUCKET`** (ex. `datalake`) pour tout le projet. MongoDB 
 
 ## 6. Initialiser la base
 
-Lancer le **backend** (FastAPI). Au démarrage, `backend/database/mongo.py` crée les index via `create_indexes()`. Les collections sont créées à la première écriture. Les variables d’environnement (ex. `MONGO_URL`, `MONGO_DB`, MinIO) sont à configurer à la **racine du projet** (voir `.env.example` à la racine).
+Lancer le **backend** (FastAPI). Au démarrage, `backend/database/mongo.py` crée les index via `create_indexes()`. Les collections sont créées à la première écriture. Les variables d’environnement (`MONGO_URL`, `MONGO_DB`, MinIO, etc.) sont à configurer dans **`backend/.env`** (fichier chargé par `app/config.py`). Ne jamais commiter ce fichier.
 
 ---
 
@@ -222,4 +233,4 @@ Lancer le **backend** (FastAPI). Au démarrage, `backend/database/mongo.py` cré
 - **`users`** : index unique sur `email`.  
 - **`documents`** : index sur `user_id` + `created_at`, `status`, `user_id` + `status` pour les listes et filtres.
 
-Créés au **démarrage du backend** (`backend/database/mongo.py` → `create_indexes()`) ou manuellement avec `init-scripts/02-mongodb-indexes.js`. Le nom de la base est défini par `MONGO_DB` (défaut : `hackathon`) à la racine du projet.
+Créés au **démarrage du backend** (`backend/database/mongo.py` → `create_indexes()`). Le nom de la base est défini par `MONGO_DB` (ex. `hackathon`) dans `backend/.env`.
