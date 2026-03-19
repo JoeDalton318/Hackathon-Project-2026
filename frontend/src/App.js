@@ -7,8 +7,6 @@ import SupplierCRMPage from './pages/SupplierCRMPage';
 import UploadPage from './pages/UploadPage';
 
 function App() {
-  const authenticated = isAuthenticated();
-
   return (
     <BrowserRouter>
       <Routes>
