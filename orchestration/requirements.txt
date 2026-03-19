@@ -1,0 +1,21 @@
+# Requirements pour les DAGs Airflow
+# Ce fichier liste les dependances Python necessaires pour l'execution des pipelines
+
+# Clients de stockage et base de donnees
+minio==7.2.0
+pymongo==4.6.1
+
+# Manipulation de donnees
+pandas==2.1.4
+numpy==1.26.2
+
+# Logging et monitoring
+python-json-logger==2.0.7
+
+# Validation de donnees
+jsonschema==4.20.0
+pydantic==2.5.3
+
+# Utilitaires
+python-dateutil==2.8.2
+pytz==2023.3

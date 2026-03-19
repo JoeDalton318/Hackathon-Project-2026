@@ -1,17 +1,23 @@
 import React from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './App.css';
+import Layout from './components/Layout';
+import ResultsPage from './pages/ResultsPage';
+import SupplierCRMPage from './pages/SupplierCRMPage';
+import UploadPage from './pages/UploadPage';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Hackathon Data Engineering 2026</h1>
-        <p>Frontend React - À personnaliser par l'équipe frontend</p>
-      </header>
-      <main>
-        {/* TODO: Ajouter vos composants ici */}
-      </main>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<UploadPage />} />
+          <Route path="/results" element={<ResultsPage />} />
+          <Route path="/suppliers" element={<SupplierCRMPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
