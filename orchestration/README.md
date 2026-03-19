@@ -64,13 +64,14 @@ Airflow reçoit trigger immédiat (pas de batch)
 **Task 3: `perform_ocr`**
 - Appelle module NLP/OCR: `from nlp_ocr import extract`
 - Extrait texte + données structurées (SIRET, montants, dates...)
-- Stocke `extraction.json` dans MinIO `curated/YYYY/MM/DD/{document_id}/`
+- Stocke `extraction.json` dans MinIO `clean/YYYY/MM/DD/{document_id}/`
 - Retourne `extracted_data` avec classification et champs
 
 **Task 4: `perform_validation`**
-- Lit `extraction.json` depuis MinIO
+- Lit `extraction.json` depuis MinIO bucket `clean`
 - Appelle module validation pour règles métier
 - Détecte anomalies (SIRET invalide, dates incohérentes, doublons...)
+- Stocke `validation_result.json` dans MinIO `clean/`
 - Retourne `anomalies` + `decision` (approved/review/blocked)
 
 **Task 5: `callback_backend`**
@@ -79,8 +80,10 @@ Airflow reçoit trigger immédiat (pas de batch)
 - Backend met à jour MongoDB + WebSocket notification au Frontend
 
 **Task 6: `archive_document`** (parallèle à Task 5)
-- Copie fichier original vers MinIO `curated/YYYY/MM/DD/{document_id}/`
-- Optionnel: supprime de bucket `raw` selon politique rétention
+- Copie fichier original depuis `raw/` vers MinIO `curated/YYYY/MM/DD/{document_id}/`
+- Copie `extraction.json` depuis `clean/` vers `curated/`
+- Copie `validation_result.json` depuis `clean/` vers `curated/`
+- Résultat final validé archivé dans `curated/` pour usage ultérieur
 
 ### 3. Chaînage des tâches
 
@@ -113,7 +116,7 @@ MONGO_DB=hackathon
 # MinIO
 MINIO_ENDPOINT=localhost:9000
 MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin123
 MINIO_SECURE=False
 MINIO_BUCKET_RAW=raw
 MINIO_BUCKET_CLEAN=clean
@@ -323,7 +326,7 @@ docker-compose up -d
 
 **MinIO Console :** http://localhost:9001
 - Username: `minioadmin`
-- Password: `minioadmin`
+- Password: `minioadmin123`
 
 ### Vérification
 

@@ -20,6 +20,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - hackathon_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # MongoDB Atlas (Cloud) - Base de données principale fournie par Samuel
   # Cluster cloud accessible depuis tous les services
@@ -46,9 +51,11 @@ services:
     image: minio/minio:latest
     container_name: hackathon_minio
     command: server /data --console-address ":9001"
+    env_file:
+      - ../.env
     environment:
-      MINIO_ROOT_USER: minio_admin
-      MINIO_ROOT_PASSWORD: minio_admin_pass
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -56,15 +63,44 @@ services:
       - minio_data:/data
     networks:
       - hackathon_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Init - Création automatique du bucket datalake
+  minio-init:
+    image: minio/mc:latest
+    container_name: hackathon_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY};
+      mc mb myminio/datalake --ignore-existing;
+      echo '✓ Bucket datalake créé avec succès';
+      exit 0;
+      "
+    networks:
+      - hackathon_network
 
   # Airflow Init - Initialisation de la base de données
   airflow-init:
-    image: apache/airflow:2.8.1-python3.11
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    image: hackathon-airflow:latest
     container_name: hackathon_airflow_init
     env_file:
       - ../.env
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow_user:airflow_pass@postgres/airflow_db
@@ -93,7 +129,7 @@ services:
 
   # Airflow Webserver
   airflow-webserver:
-    image: apache/airflow:2.8.1-python3.11
+    image: hackathon-airflow:latest
     container_name: hackathon_airflow_webserver
     env_file:
       - ../.env
@@ -121,7 +157,7 @@ services:
 
   # Airflow Scheduler
   airflow-scheduler:
-    image: apache/airflow:2.8.1-python3.11
+    image: hackathon-airflow:latest
     container_name: hackathon_airflow_scheduler
     env_file:
       - ../.env

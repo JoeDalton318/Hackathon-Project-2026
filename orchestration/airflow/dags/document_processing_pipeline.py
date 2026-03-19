@@ -121,12 +121,14 @@ def download_document(**context):
     filename = document_info['filename']
     local_path = os.path.join(local_dir, f"{document_id}_{filename}")
     
-    # Telechargement depuis bucket raw
-    bucket = MINIO_CONFIG['buckets']['raw']
+    # Telechargement depuis datalake/raw/
+    bucket = MINIO_CONFIG['bucket']
+    raw_prefix = MINIO_CONFIG['prefixes']['raw']
     minio_path = document_info['minio_path']
     
+    # Le minio_path stocké dans MongoDB contient déjà le préfixe raw/
     client.fget_object(bucket, minio_path, local_path)
-    logging.info(f"Document telecharge: {minio_path} -> {local_path}")
+    logging.info(f"Document telecharge: {bucket}/{minio_path} -> {local_path}")
     
     context['task_instance'].xcom_push(key='local_path', value=local_path)
     return local_path
@@ -188,10 +190,11 @@ def perform_ocr(**context):
             'fields': {}
         }
     
-    # Stockage du extraction.json dans MinIO curated/
+    # Stockage du extraction.json dans MinIO datalake/clean/ (resultats OCR intermediaires)
     document_id = document_info['document_id']
     now = datetime.now()
-    curated_path = f"{now.year}/{now.month:02d}/{now.day:02d}/{document_id}/extraction.json"
+    # Chemin relatif sans préfixe (sera ajouté lors de l'upload)
+    extraction_relative = f"{now.year}/{now.month:02d}/{now.day:02d}/{document_id}/extraction.json"
     
     client = Minio(
         MINIO_CONFIG['endpoint'],
@@ -200,22 +203,28 @@ def perform_ocr(**context):
         secure=MINIO_CONFIG['secure']
     )
     
-    bucket_curated = MINIO_CONFIG['buckets'].get('curated', 'curated')
-    if not client.bucket_exists(bucket_curated):
-        client.make_bucket(bucket_curated)
+    bucket = MINIO_CONFIG['bucket']
+    clean_prefix = MINIO_CONFIG['prefixes']['clean']
+    
+    # Création du bucket si nécessaire
+    if not client.bucket_exists(bucket):
+        client.make_bucket(bucket)
+    
+    # Chemin complet avec préfixe clean/
+    clean_path = clean_prefix + extraction_relative
     
     # Ecriture dans un fichier temporaire puis upload
     temp_json = f"/tmp/{document_id}_extraction.json"
     with open(temp_json, 'w', encoding='utf-8') as f:
         json.dump(extracted_data, f, ensure_ascii=False, indent=2)
     
-    client.fput_object(bucket_curated, curated_path, temp_json)
+    client.fput_object(bucket, clean_path, temp_json)
     os.remove(temp_json)
     
-    logging.info(f"extraction.json stocke: {bucket_curated}/{curated_path}")
+    logging.info(f"extraction.json stocke: {bucket}/{clean_path}")
     
     context['task_instance'].xcom_push(key='extracted_data', value=extracted_data)
-    context['task_instance'].xcom_push(key='curated_path', value=curated_path)
+    context['task_instance'].xcom_push(key='clean_path', value=clean_path)
     
     return extracted_data
 
@@ -239,9 +248,9 @@ def perform_validation(**context):
         key='extracted_data'
     )
     
-    curated_path = context['task_instance'].xcom_pull(
+    clean_path = context['task_instance'].xcom_pull(
         task_ids='perform_ocr',
-        key='curated_path'
+        key='clean_path'
     )
     
     document_info = context['task_instance'].xcom_pull(
@@ -256,12 +265,12 @@ def perform_validation(**context):
     
     # Appel du module de validation
     try:
-        # Le module de validation lit extraction.json depuis MinIO
-        # et produit validation_result.json
+        # Le module de validation lit extraction.json depuis MinIO datalake/clean/
+        # et produit validation_result.json dans clean/ egalement
         from validation.main import validate_batch_from_minio
         
         validation_result = validate_batch_from_minio(
-            extraction_path=curated_path,
+            extraction_path=clean_path,
             store_minio=True
         )
         
@@ -374,11 +383,12 @@ def callback_to_backend(**context):
 
 def archive_document(**context):
     """
-    Archive le document original dans le bucket curated.
-    Deplace le fichier de raw vers curated apres traitement complet.
+    Archive les resultats valides dans datalake/curated/.
+    Copie le fichier original ET les resultats (extraction.json, validation_result.json)
+    depuis raw/ et clean/ vers curated/ apres traitement complet.
     
     Returns:
-        str: Chemin du document archive
+        dict: Chemins des documents archives
     """
     from minio import Minio
     import sys
@@ -391,6 +401,11 @@ def archive_document(**context):
         key='document_info'
     )
     
+    clean_path = context['task_instance'].xcom_pull(
+        task_ids='perform_ocr',
+        key='clean_path'
+    )
+    
     if not document_info:
         raise ValueError("Informations document manquantes")
     
@@ -401,30 +416,59 @@ def archive_document(**context):
         secure=MINIO_CONFIG['secure']
     )
     
-    bucket_raw = MINIO_CONFIG['buckets']['raw']
-    bucket_curated = MINIO_CONFIG['buckets'].get('curated', 'curated')
+    bucket = MINIO_CONFIG['bucket']
+    raw_prefix = MINIO_CONFIG['prefixes']['raw']
+    clean_prefix = MINIO_CONFIG['prefixes']['clean']
+    curated_prefix = MINIO_CONFIG['prefixes']['curated']
     
-    # Chemin source et destination
-    source_path = document_info['minio_path']
+    # Chemins
     document_id = document_info['document_id']
     filename = document_info['filename']
     
     now = datetime.now()
-    dest_path = f"{now.year}/{now.month:02d}/{now.day:02d}/{document_id}/{filename}"
+    base_relative = f"{now.year}/{now.month:02d}/{now.day:02d}/{document_id}"
+    
+    archived_paths = {}
     
     try:
-        # Copie vers curated
+        # 1. Copie du fichier original depuis raw/ vers curated/
+        original_source = document_info['minio_path']  # Déjà avec préfixe raw/
+        original_dest = curated_prefix + base_relative + "/" + filename
+        
         client.copy_object(
-            bucket_curated,
-            dest_path,
-            f"{bucket_raw}/{source_path}"
+            bucket,
+            original_dest,
+            f"{bucket}/{original_source}"
         )
+        archived_paths['original'] = original_dest
+        logging.info(f"Document original archive: {original_source} -> {original_dest}")
         
-        # Suppression du bucket raw (optionnel selon politique retention)
-        # client.remove_object(bucket_raw, source_path)
+        # 2. Copie de extraction.json depuis clean/ vers curated/
+        extraction_dest = curated_prefix + base_relative + "/extraction.json"
+        client.copy_object(
+            bucket,
+            extraction_dest,
+            f"{bucket}/{clean_path}"
+        )
+        archived_paths['extraction'] = extraction_dest
+        logging.info(f"Extraction archive: {clean_path} -> {extraction_dest}")
         
-        logging.info(f"Document archive: {source_path} -> {bucket_curated}/{dest_path}")
-        return dest_path
+        # 3. Copie de validation_result.json depuis clean/ vers curated/ (si existe)
+        validation_source = clean_path.replace('extraction.json', 'validation_result.json')
+        try:
+            validation_dest = curated_prefix + base_relative + "/validation_result.json"
+            client.copy_object(
+                bucket,
+                validation_dest,
+                f"{bucket}/{validation_source}"
+            )
+            archived_paths['validation'] = validation_dest
+            logging.info(f"Validation archive: {validation_source} -> {validation_dest}")
+        except Exception:
+            logging.warning(f"validation_result.json non trouvé: {validation_source}")
+        
+        logging.info(f"Archivage complet - {len(archived_paths)} fichiers dans {bucket}/curated/")
+        return archived_paths
         
     except Exception as e:
         logging.error(f"Erreur archivage: {e}")
