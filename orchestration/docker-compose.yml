@@ -222,7 +222,6 @@ volumes:
 
   minio_data:
 
-
 networks:
   hackathon_network:
     driver: bridge

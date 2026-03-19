@@ -43,6 +43,19 @@ function notifyMessage(message) {
     });
 }
 
+function getCurrentDocumentId() {
+    if (typeof window === 'undefined' || !window.location || typeof window.location.pathname !== 'string') {
+        return null;
+    }
+
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    if (segments.length === 0) {
+        return null;
+    }
+
+    return segments[segments.length - 1];
+}
+
 function scheduleReconnect() {
     if (!shouldReconnect || reconnectTimer) {
         return;
@@ -57,6 +70,12 @@ function scheduleReconnect() {
 export function connectWebSocket() {
     const token = getAuthToken();
     if (!token) {
+        notifyStatus('disconnected');
+        return null;
+    }
+
+    const documentId = getCurrentDocumentId();
+    if (!documentId) {
         notifyStatus('disconnected');
         return null;
     }
