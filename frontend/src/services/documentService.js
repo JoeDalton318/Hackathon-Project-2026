@@ -42,7 +42,7 @@ function mapDocumentToFrontend(doc) {
         siren: extracted.siren || '',
         siret: extracted.siret || '',
         date: extracted.date || extracted.date_emission || '',
-        extractedAmount: extracted.montant_ttc || extracted.montant || extracted.total || 0,
+        extractedAmount: parseFloat(extracted.montant_ttc || extracted.montant || extracted.total) || 0,
         currency: extracted.devise || extracted.currency || 'EUR',
         status: doc.status,
         validationStatus,

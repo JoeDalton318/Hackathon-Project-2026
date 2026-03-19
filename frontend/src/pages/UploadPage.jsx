@@ -154,16 +154,14 @@ export default function UploadPage() {
             setStatusMessage('Uploading documents...');
             await uploadDocuments(files);
             setStatusMessage('Documents uploaded. Analysis triggered…');
+            setProcessing(false);
+            setDone(true);
+            setTimeout(() => navigate('/results'), 1400);
         } catch (error) {
-            setErrorMessage(`${getApiErrorMessage(error, 'Backend unavailable.')} Falling back to mock processing.`);
-            setStatusMessage('Backend unavailable, running mock processing flow...');
-            await new Promise((resolve) => setTimeout(resolve, 1800));
-        } finally {
+            setErrorMessage(getApiErrorMessage(error, 'Upload failed. Please check the backend is running.'));
+            setStatusMessage('');
             setProcessing(false);
         }
-
-        setDone(true);
-        setTimeout(() => navigate('/results'), 1400);
     };
 
     if (done) {

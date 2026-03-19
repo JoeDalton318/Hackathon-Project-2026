@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Search, AlertCircle, FileSearch, ShieldAlert, ShieldCheck, XCircle, Sparkles } from 'lucide-react';
-import { mockDocuments } from '../mock/data';
 import { getApiErrorMessage } from '../services/apiClient';
 import { getDocuments } from '../services/documentService';
 import Button from '../components/ui/Button';
@@ -103,17 +102,14 @@ export default function ResultsPage() {
                     return;
                 }
 
-                setDocuments(Array.isArray(data) && data.length > 0 ? data : mockDocuments);
-                if (!Array.isArray(data) || data.length === 0) {
-                    setLoadError('Documents API returned no data. Showing mock documents.');
-                }
+                setDocuments(Array.isArray(data) ? data : []);
             } catch (error) {
                 if (!isActive) {
                     return;
                 }
 
-                setDocuments(mockDocuments);
-                setLoadError(`${getApiErrorMessage(error, 'Unable to load documents.')} Showing mock documents.`);
+                setDocuments([]);
+                setLoadError(getApiErrorMessage(error, 'Unable to load documents.'));
             } finally {
                 if (isActive) {
                     setLoading(false);
