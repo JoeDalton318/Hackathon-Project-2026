@@ -151,14 +151,14 @@ export default function UploadPage() {
         setErrorMessage('');
 
         try {
-            setStatusMessage('Uploading documents...');
+            setStatusMessage('Envoi des documents en cours...');
             await uploadDocuments(files);
-            setStatusMessage('Documents uploaded. Analysis triggered…');
+            setStatusMessage('Documents envoyés. Analyse lancée...');
             setProcessing(false);
             setDone(true);
-            setTimeout(() => navigate('/results'), 1400);
+            setTimeout(() => navigate('/results'), 2500);
         } catch (error) {
-            setErrorMessage(getApiErrorMessage(error, 'Upload failed. Please check the backend is running.'));
+            setErrorMessage(getApiErrorMessage(error, "L'envoi des documents a échoué. Veuillez vérifier votre connexion et réessayer."));
             setStatusMessage('');
             setProcessing(false);
         }
@@ -171,12 +171,12 @@ export default function UploadPage() {
                     <CheckCircle className="w-10 h-10 text-emerald-500" />
                 </div>
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Processing Complete!</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">Documents envoyés !</h2>
                     <p className="text-gray-500 mt-1">
-                        {files.length} document{files.length > 1 ? 's' : ''} analysed successfully.
+                        {files.length} document{files.length > 1 ? 's' : ''} en cours d'analyse par le pipeline.
                     </p>
                 </div>
-                <p className="text-sm text-sky-500 animate-pulse">Redirecting to results…</p>
+                <p className="text-sm text-sky-500 animate-pulse">Redirection vers les résultats...</p>
             </div>
         );
     }

@@ -14,7 +14,7 @@ export default function RegisterPage() {
     const [errorMessage, setErrorMessage] = useState('');
 
     if (isAuthenticated()) {
-        return <Navigate to="/upload" replace />;
+        return <Navigate to="/" replace />;
     }
 
     async function handleSubmit(event) {
@@ -34,7 +34,7 @@ export default function RegisterPage() {
                 },
             });
         } catch (error) {
-            setErrorMessage(getAuthErrorMessage(error, 'Unable to create account.'));
+            setErrorMessage(getAuthErrorMessage(error, 'Impossible de créer le compte. Veuillez réessayer.'));
         } finally {
             setSubmitting(false);
         }

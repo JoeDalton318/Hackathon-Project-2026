@@ -33,18 +33,15 @@ apiClient.interceptors.response.use(
     }
 );
 
-export function getApiErrorMessage(error, fallbackMessage = 'An unexpected error occurred.') {
+export function getApiErrorMessage(error, fallbackMessage = 'Une erreur inattendue s\'est produite. Veuillez réessayer.') {
     if (axios.isAxiosError(error)) {
-        return (
-            error.response?.data?.message ||
-            error.response?.data?.detail ||
-            error.message ||
-            fallbackMessage
-        );
-    }
-
-    if (error instanceof Error) {
-        return error.message || fallbackMessage;
+        if (error.code === 'ERR_NETWORK') {
+            return 'Le serveur est momentanément indisponible. Veuillez réessayer dans quelques instants.';
+        }
+        if (error.code === 'ECONNABORTED') {
+            return 'Le serveur met trop de temps à répondre. Veuillez réessayer.';
+        }
+        return error.response?.data?.message || error.response?.data?.detail || fallbackMessage;
     }
 
     return fallbackMessage;

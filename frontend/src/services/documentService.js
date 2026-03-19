@@ -2,7 +2,7 @@ import apiClient, { isApiConfigured } from './apiClient';
 
 function assertApiConfigured() {
     if (!isApiConfigured) {
-        throw new Error('API not configured. Set REACT_APP_API_BASE_URL to enable backend requests.');
+        throw new Error("L'application n'est pas correctement configurée. Veuillez contacter l'administrateur.");
     }
 }
 

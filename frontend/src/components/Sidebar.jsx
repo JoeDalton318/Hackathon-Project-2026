@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Upload, FileText, Users, Brain, BarChart3, X, Sparkles, LogOut } from 'lucide-react';
-import { logout } from '../services/auth';
+import { getCurrentUser, logout } from '../services/auth';
 
 export const navItems = [
     { to: '/', label: 'Upload', icon: Upload, end: true },
@@ -10,6 +10,9 @@ export const navItems = [
 
 export default function Sidebar({ className = '', onNavigate, onClose }) {
     const navigate = useNavigate();
+    const user = getCurrentUser();
+    const displayName = user?.nom || '';
+    const initial = displayName ? displayName.charAt(0).toUpperCase() : '';
 
     function handleLogout() {
         logout();
@@ -78,6 +81,17 @@ export default function Sidebar({ className = '', onNavigate, onClose }) {
             </nav>
 
             <div className="border-t border-slate-800 px-4 py-4 space-y-3">
+                {displayName && (
+                    <div className="flex items-center gap-3 px-3 py-2">
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                            {initial}
+                        </div>
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-white">{displayName}</p>
+                            {user?.email && <p className="truncate text-xs text-slate-400">{user.email}</p>}
+                        </div>
+                    </div>
+                )}
                 <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-all duration-150 hover:bg-red-950/50 hover:text-red-400"

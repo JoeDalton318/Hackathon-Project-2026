@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { mockDocuments, mockSuppliers } from '../mock/data';
 import {
     Search,
     Plus,
@@ -214,21 +213,19 @@ export default function SupplierCRMPage() {
             if (suppliersResult.status === 'fulfilled' && Array.isArray(suppliersResult.value) && suppliersResult.value.length > 0) {
                 setSuppliers(suppliersResult.value);
             } else {
-                setSuppliers(mockSuppliers);
-                const supplierReason = suppliersResult.status === 'rejected'
-                    ? getApiErrorMessage(suppliersResult.reason, 'Unable to load suppliers.')
-                    : 'Suppliers API returned no data.';
-                errorMessages.push(`${supplierReason} Showing mock suppliers.`);
+                setSuppliers([]);
+                if (suppliersResult.status === 'rejected') {
+                    errorMessages.push(getApiErrorMessage(suppliersResult.reason, 'Impossible de charger la liste des fournisseurs.'));
+                }
             }
 
             if (documentsResult.status === 'fulfilled' && Array.isArray(documentsResult.value) && documentsResult.value.length > 0) {
                 setDocuments(documentsResult.value);
             } else {
-                setDocuments(mockDocuments);
-                const documentReason = documentsResult.status === 'rejected'
-                    ? getApiErrorMessage(documentsResult.reason, 'Unable to load documents.')
-                    : 'Documents API returned no data.';
-                errorMessages.push(`${documentReason} Showing mock documents.`);
+                setDocuments([]);
+                if (documentsResult.status === 'rejected') {
+                    errorMessages.push(getApiErrorMessage(documentsResult.reason, 'Impossible de charger les documents.'));
+                }
             }
 
             setLoadError(errorMessages.join(' '));
