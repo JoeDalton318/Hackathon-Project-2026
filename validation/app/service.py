@@ -58,8 +58,8 @@ def run_validation(
     resolved_access_key = minio_access_key or settings.minio_access_key
     resolved_secret_key = minio_secret_key or settings.minio_secret_key
     resolved_bucket = minio_bucket or settings.minio_bucket
-    resolved_input_prefix = minio_prefix or settings.minio_curated_prefix
-    resolved_validation_prefix = minio_validation_prefix or settings.minio_validation_prefix
+    resolved_input_prefix = minio_prefix or settings.minio_clean_prefix
+    resolved_output_prefix = minio_validation_prefix or settings.minio_curated_prefix
 
     if source == "dir":
         if not input_dir:
@@ -118,7 +118,7 @@ def run_validation(
             secure=resolved_secure,
             bucket=resolved_bucket,
             input_prefix=resolved_input_prefix,
-            validation_prefix=resolved_validation_prefix,
+            output_prefix=resolved_output_prefix,
         )
 
         stored["batch"] = io_client.store_batch_validation_result(

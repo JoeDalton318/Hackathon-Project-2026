@@ -52,8 +52,8 @@ def main() -> None:
     parser.add_argument("--minio-secret-key", type=str, default=settings.minio_secret_key)
     parser.add_argument("--minio-secure", action="store_true", default=settings.minio_secure)
     parser.add_argument("--minio-bucket", type=str, default=settings.minio_bucket)
-    parser.add_argument("--minio-prefix", type=str, default=settings.minio_curated_prefix)
-    parser.add_argument("--minio-validation-prefix", type=str, default=settings.minio_validation_prefix)
+    parser.add_argument("--minio-prefix", type=str, default=settings.minio_clean_prefix)
+    parser.add_argument("--minio-validation-prefix", type=str, default=settings.minio_curated_prefix)
 
     parser.add_argument(
         "--disable-insee",

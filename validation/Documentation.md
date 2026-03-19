@@ -23,16 +23,16 @@ Le moteur produit deux niveaux de sortie :
 
 - OCR / extraction 
 
-- stockage des JSON OCR dans curated/.../extraction.json
+- stockage des JSON OCR dans clean/.../extraction.json
 
 - lecture de ces JSON par le moteur de validation
 
 - validation unitaire et inter-documents
 
-- stockage des résultats dans MinIO sous curated/validation/...
+- stockage des résultats dans MinIO sous curated/...
 
-curated/validation/batches/YYYY/MM/DD/<batch_id>/validation_result.json
-curated/validation/documents/YYYY/MM/DD/<document_id>/validation_result.json
+curated/batches/YYYY/MM/DD/<batch_id>/validation_result.json
+curated/documents/YYYY/MM/DD/<document_id>/validation_result.json
 
 ---
 
@@ -43,7 +43,7 @@ Le moteur lit les résultats OCR structurés depuis MinIO.
 ## Convention d’entrée lue par la validation
 
 
-curated/YYYY/MM/DD/<document_id>/extraction.json
+clean/YYYY/MM/DD/<document_id>/extraction.json
 
 
 Chaque `extraction.json` contient notamment :
@@ -125,7 +125,7 @@ Le moteur produit :
 Un JSON global de validation :
 
 
-curated/validation/batches/YYYY/MM/DD/<batch_id>/validation_result.json
+curated/batches/YYYY/MM/DD/<batch_id>/validation_result.json
 
 
 ## 2. Résultat par document
@@ -133,7 +133,7 @@ curated/validation/batches/YYYY/MM/DD/<batch_id>/validation_result.json
 Un JSON par document :
 
 
-curated/validation/documents/YYYY/MM/DD/<document_id>/validation_result.json
+curated/documents/YYYY/MM/DD/<document_id>/validation_result.json
 
 
 ---
@@ -375,7 +375,7 @@ MinIO démarré
 
 des extraction.json présents dans :
 
-curated/.../.../.../extraction.json
+clean/.../.../.../extraction.json
 
 Lancer :
 
@@ -401,7 +401,7 @@ Le moteur de validation dépend uniquement des fichiers produits par l’OCR.
 ###  Contrat attendu
 
 Les fichiers OCR doivent être déposés dans MinIO sous la forme :
-curated/YYYY/MM/DD/<document_id>/extraction.json
+clean/YYYY/MM/DD/<document_id>/extraction.json
 
 
 ### Contenu minimal attendu :
@@ -464,7 +464,7 @@ Le backend peut :
 
 lire les résultats de validation via MinIO :
 
-curated/validation/documents/.../validation_result.json
+curated/documents/.../validation_result.json
 
 
 

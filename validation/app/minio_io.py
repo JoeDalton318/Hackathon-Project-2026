@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from minio import Minio
@@ -12,8 +12,8 @@ from .settings import settings
 
 
 DEFAULT_BUCKET = settings.minio_bucket
-DEFAULT_INPUT_PREFIX = settings.minio_curated_prefix
-DEFAULT_VALIDATION_PREFIX = settings.minio_validation_prefix
+DEFAULT_INPUT_PREFIX = settings.minio_clean_prefix
+DEFAULT_OUTPUT_PREFIX = settings.minio_curated_prefix
 
 
 @dataclass
@@ -31,7 +31,7 @@ class MinioIO:
         secure: Optional[bool] = None,
         bucket: Optional[str] = None,
         input_prefix: Optional[str] = None,
-        validation_prefix: Optional[str] = None,
+        output_prefix: Optional[str] = None,
     ):
         self.endpoint = endpoint or settings.minio_endpoint
         self.access_key = access_key or settings.minio_access_key
@@ -39,7 +39,7 @@ class MinioIO:
         self.secure = secure if secure is not None else settings.minio_secure
         self.bucket = bucket or DEFAULT_BUCKET
         self.input_prefix = input_prefix or DEFAULT_INPUT_PREFIX
-        self.validation_prefix = validation_prefix or DEFAULT_VALIDATION_PREFIX
+        self.output_prefix = output_prefix or DEFAULT_OUTPUT_PREFIX
 
         self.client = Minio(
             self.endpoint,
@@ -48,9 +48,6 @@ class MinioIO:
             secure=self.secure,
         )
 
-    # -----------------------------
-    # LECTURE DES extraction.json
-    # -----------------------------
     def list_input_json_objects(self) -> List[str]:
         objects: List[str] = []
 
@@ -58,9 +55,6 @@ class MinioIO:
             object_name = obj.object_name.replace("\\", "/")
 
             if not object_name.endswith("/extraction.json"):
-                continue
-
-            if "/validation/" in object_name:
                 continue
 
             objects.append(object_name)
@@ -88,7 +82,6 @@ class MinioIO:
         file_names: Optional[List[str]] = None,
         object_names: Optional[List[str]] = None,
     ) -> List[MinioJsonObject]:
-        # lecture directe par clé MinIO
         if object_names:
             results: List[MinioJsonObject] = []
             for object_name in object_names:
@@ -97,7 +90,6 @@ class MinioIO:
                     break
             return results
 
-        # Cas fallback : scan + filtre
         all_object_names = self.list_input_json_objects()
         results: List[MinioJsonObject] = []
 
@@ -123,9 +115,6 @@ class MinioIO:
 
         return results
 
-    # -----------------------------
-    # ECRITURE DES RÉSULTATS
-    # -----------------------------
     def _put_json(
         self,
         object_name: str,
@@ -145,8 +134,8 @@ class MinioIO:
         return object_name
 
     def store_batch_validation_result(self, batch_id: str, payload: Dict[str, Any]) -> str:
-        now = datetime.utcnow()
-        prefix = self.validation_prefix.rstrip("/") + "/"
+        now = datetime.now(timezone.utc)
+        prefix = self.output_prefix.rstrip("/") + "/"
         object_name = (
             f"{prefix}"
             f"batches/{now.year}/{now.month:02d}/{now.day:02d}/"
@@ -165,8 +154,8 @@ class MinioIO:
         payload: Dict[str, Any],
         batch_id: Optional[str] = None,
     ) -> str:
-        now = datetime.utcnow()
-        prefix = self.validation_prefix.rstrip("/") + "/"
+        now = datetime.now(timezone.utc)
+        prefix = self.output_prefix.rstrip("/") + "/"
         object_name = (
             f"{prefix}"
             f"documents/{now.year}/{now.month:02d}/{now.day:02d}/"
