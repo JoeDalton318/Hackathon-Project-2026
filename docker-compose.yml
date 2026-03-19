@@ -1,8 +1,9 @@
 # ============================================
 # DOCKER COMPOSE - PROJET HACKATHON 2026
 # ============================================
-# IMPORTANT: Le fichier .env doit être à la RACINE du projet
-# Les services chargent le fichier ../.env (relatif à orchestration/)
+# Lancez depuis la RACINE du projet :
+#   docker-compose up --build
+# Le fichier .env doit être à la racine du projet
 # ============================================
 
 services:
@@ -25,33 +26,13 @@ services:
       timeout: 5s
       retries: 5
 
-  # MongoDB Atlas (Cloud) - Base de données principale fournie par Samuel
-  # Cluster cloud accessible depuis tous les services
-  # Plus besoin de MongoDB local, on utilise mongodb+srv://...
-  # 
-  # Pour dev local uniquement, décommenter ci-dessous:
-  # mongodb:
-  #   image: mongo:7.0
-  #   container_name: hackathon_mongodb
-  #   environment:
-  #     MONGO_INITDB_ROOT_USERNAME: hackathon_admin
-  #     MONGO_INITDB_ROOT_PASSWORD: hackathon_admin_pass
-  #     MONGO_INITDB_DATABASE: hackathon_db
-  #   ports:
-  #     - "27017:27017"
-  #   volumes:
-  #     - mongodb_data:/data/db
-  #     - ../data-architecture/init-scripts:/docker-entrypoint-initdb.d
-  #   networks:
-  #     - hackathon_network
-
   # MinIO - Data Lake (compatible S3)
   minio:
     image: minio/minio:latest
     container_name: hackathon_minio
     command: server /data --console-address ":9001"
     env_file:
-      - ../.env
+      - .env
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
@@ -77,7 +58,7 @@ services:
       minio:
         condition: service_healthy
     env_file:
-      - ../.env
+      - .env
     entrypoint: >
       /bin/sh -c "
       sleep 5;
@@ -92,12 +73,12 @@ services:
   # Airflow Init - Initialisation de la base de données
   airflow-init:
     build:
-      context: .
+      context: ./orchestration
       dockerfile: Dockerfile.airflow
     image: hackathon-airflow:latest
     container_name: hackathon_airflow_init
     env_file:
-      - ../.env
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,9 +94,9 @@ services:
       _AIRFLOW_WWW_USER_USERNAME: admin
       _AIRFLOW_WWW_USER_PASSWORD: admin
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
-      - ./airflow/plugins:/opt/airflow/plugins
+      - ./orchestration/airflow/dags:/opt/airflow/dags
+      - ./orchestration/airflow/logs:/opt/airflow/logs
+      - ./orchestration/airflow/plugins:/opt/airflow/plugins
     entrypoint: /bin/bash
     command:
       - -c
@@ -132,7 +113,7 @@ services:
     image: hackathon-airflow:latest
     container_name: hackathon_airflow_webserver
     env_file:
-      - ../.env
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,11 +130,11 @@ services:
       MINIO_ENDPOINT: minio:9000
       AIRFLOW_URL: http://airflow-webserver:8080
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
-      - ./airflow/plugins:/opt/airflow/plugins
-      - ../nlp-ocr:/opt/airflow/nlp-ocr
-      - ../validation:/opt/airflow/validation
+      - ./orchestration/airflow/dags:/opt/airflow/dags
+      - ./orchestration/airflow/logs:/opt/airflow/logs
+      - ./orchestration/airflow/plugins:/opt/airflow/plugins
+      - ./nlp-ocr:/opt/airflow/nlp-ocr
+      - ./validation:/opt/airflow/validation
     ports:
       - "8080:8080"
     command: webserver
@@ -166,7 +147,7 @@ services:
     image: hackathon-airflow:latest
     container_name: hackathon_airflow_scheduler
     env_file:
-      - ../.env
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -182,11 +163,11 @@ services:
       MINIO_ENDPOINT: minio:9000
       AIRFLOW_URL: http://airflow-webserver:8080
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
-      - ./airflow/plugins:/opt/airflow/plugins
-      - ../nlp-ocr:/opt/airflow/nlp-ocr
-      - ../validation:/opt/airflow/validation
+      - ./orchestration/airflow/dags:/opt/airflow/dags
+      - ./orchestration/airflow/logs:/opt/airflow/logs
+      - ./orchestration/airflow/plugins:/opt/airflow/plugins
+      - ./nlp-ocr:/opt/airflow/nlp-ocr
+      - ./validation:/opt/airflow/validation
     command: scheduler
     networks:
       - hackathon_network
@@ -195,18 +176,18 @@ services:
   # FastAPI Backend
   backend:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
     container_name: hackathon_backend
     env_file:
-      - ../.env
+      - .env
     depends_on:
       minio:
         condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
-      - ../backend:/app
+      - ./backend:/app
     networks:
       - hackathon_network
     restart: unless-stopped
@@ -217,29 +198,26 @@ services:
       retries: 3
       start_period: 40s
 
-  # React Frontend
+  # React Frontend — npm run build (multi-stage) + nginx
   frontend:
     build:
-      context: ../frontend
+      context: ./frontend
       dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL}
+        REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL}
     container_name: hackathon_frontend
     depends_on:
       backend:
         condition: service_healthy
-    environment:
-      REACT_APP_API_URL: http://localhost:8000
     ports:
-      - "3000:3000"
-    volumes:
-      - ../frontend/src:/app/src
-      - ../frontend/public:/app/public
+      - "3000:80"
     networks:
       - hackathon_network
     restart: unless-stopped
 
 volumes:
   postgres_data:
-  # mongodb_data:  # Non utilisé avec MongoDB Atlas
   minio_data:
 
 networks:

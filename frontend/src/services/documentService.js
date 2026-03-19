@@ -17,7 +17,7 @@ export async function uploadDocuments(files) {
         formData.append('files', file);
     });
 
-    const response = await apiClient.post('/upload', formData, {
+    const response = await apiClient.post('/documents/upload', formData, {
         headers: {
             'Content-Type': 'multipart/form-data',
         },

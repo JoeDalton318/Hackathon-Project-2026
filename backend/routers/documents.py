@@ -73,7 +73,7 @@ async def list_documents(
             total=total,
             page=page,
             limit=limit,
-            items=records,
+            items=[DocumentOut(**r.model_dump()) for r in records],
         ).model_dump()
     )
 

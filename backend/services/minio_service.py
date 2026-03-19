@@ -9,9 +9,10 @@ from database.minio import get_minio
 
 async def upload_raw(document_id: str, filename: str, data: bytes, content_type: str) -> str:
     client: Minio = get_minio()
-    object_name = f"{document_id}/{filename}"
+    raw_prefix = settings.MINIO_RAW_PREFIX.rstrip("/")
+    object_name = f"{raw_prefix}/{document_id}/{filename}"
     client.put_object(
-        bucket_name=settings.MINIO_BUCKET_RAW,
+        bucket_name=settings.MINIO_BUCKET,
         object_name=object_name,
         data=io.BytesIO(data),
         length=len(data),
@@ -23,7 +24,7 @@ async def upload_raw(document_id: str, filename: str, data: bytes, content_type:
 def get_presigned_url(object_name: str, expires_minutes: int = 15) -> str:
     client: Minio = get_minio()
     return client.presigned_get_object(
-        bucket_name=settings.MINIO_BUCKET_RAW,
+        bucket_name=settings.MINIO_BUCKET,
         object_name=object_name,
         expires=timedelta(minutes=expires_minutes),
     )
