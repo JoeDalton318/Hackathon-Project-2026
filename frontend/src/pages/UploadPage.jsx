@@ -17,7 +17,7 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import { getApiErrorMessage } from '../services/apiClient';
-import { processDocuments, uploadDocuments } from '../services/documentService';
+import { uploadDocuments } from '../services/documentService';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Card from '../components/ui/Card';
@@ -152,17 +152,8 @@ export default function UploadPage() {
 
         try {
             setStatusMessage('Uploading documents...');
-            const uploadResponse = await uploadDocuments(files);
-            const uploadedIds = Array.isArray(uploadResponse)
-                ? uploadResponse.map((item) => item?.id).filter(Boolean)
-                : [];
-
-            setStatusMessage('Starting document processing...');
-            await processDocuments(
-                uploadedIds.length > 0
-                    ? { documentIds: uploadedIds }
-                    : { documentNames: files.map((file) => file.name) }
-            );
+            await uploadDocuments(files);
+            setStatusMessage('Documents uploaded. Analysis triggered…');
         } catch (error) {
             setErrorMessage(`${getApiErrorMessage(error, 'Backend unavailable.')} Falling back to mock processing.`);
             setStatusMessage('Backend unavailable, running mock processing flow...');
