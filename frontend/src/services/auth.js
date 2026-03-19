@@ -28,7 +28,19 @@ export function clearAuthToken() {
 }
 
 export function isAuthenticated() {
-    return Boolean(getAuthToken());
+    const token = getAuthToken();
+    if (!token) return false;
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now();
+    } catch {
+        clearAuthToken();
+        return false;
+    }
+}
+
+export function logout() {
+    clearAuthToken();
 }
 
 export function getAuthErrorMessage(error, fallbackMessage = 'Authentication failed.') {

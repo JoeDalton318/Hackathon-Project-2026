@@ -1,5 +1,6 @@
-import { NavLink } from 'react-router-dom';
-import { Upload, FileText, Users, Brain, BarChart3, X, Sparkles } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Upload, FileText, Users, Brain, BarChart3, X, Sparkles, LogOut } from 'lucide-react';
+import { logout } from '../services/auth';
 
 export const navItems = [
     { to: '/', label: 'Upload', icon: Upload, end: true },
@@ -8,6 +9,13 @@ export const navItems = [
 ];
 
 export default function Sidebar({ className = '', onNavigate, onClose }) {
+    const navigate = useNavigate();
+
+    function handleLogout() {
+        logout();
+        navigate('/login', { replace: true });
+    }
+
     return (
         <aside className={`flex h-full w-72 flex-col border-r border-slate-800/80 bg-slate-900/95 backdrop-blur-xl ${className}`}>
             <div className="border-b border-slate-800/90 px-5 py-5">
@@ -69,8 +77,15 @@ export default function Sidebar({ className = '', onNavigate, onClose }) {
                 </div>
             </nav>
 
-            <div className="border-t border-slate-800 px-4 py-4">
-                <div className="flex items-center gap-2 text-slate-500">
+            <div className="border-t border-slate-800 px-4 py-4 space-y-3">
+                <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-all duration-150 hover:bg-red-950/50 hover:text-red-400"
+                >
+                    <LogOut className="h-4 w-4 flex-shrink-0" />
+                    Sign out
+                </button>
+                <div className="flex items-center gap-2 text-slate-600 px-3">
                     <BarChart3 className="h-3.5 w-3.5" />
                     <span className="text-xs">Hackathon 2026 - v1.0</span>
                 </div>

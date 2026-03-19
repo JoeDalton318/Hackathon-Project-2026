@@ -161,6 +161,12 @@ export default function ResultsPage() {
                 </div>
             )}
 
+            {!loading && !loadError && documents.length > 0 && documents.every((d) => d.status === 'pending') && (
+                <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+                    Documents uploaded and queued. The extraction pipeline is processing them — data will appear here once analysis is complete.
+                </div>
+            )}
+
             {loading ? (
                 <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
                     {Array.from({ length: 4 }).map((_, index) => (
