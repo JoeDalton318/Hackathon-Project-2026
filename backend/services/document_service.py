@@ -75,8 +75,7 @@ async def list_records(
         query["document_type"] = document_type
 
     total = await db[COLLECTION].count_documents(query)
-    # Tri par date de création décroissante (plus récents en premier) pour un ordre prévisible côté API/liste
-    cursor = db[COLLECTION].find(query).sort("created_at", -1).skip(skip).limit(limit)
+    cursor = db[COLLECTION].find(query).skip(skip).limit(limit)
     docs = []
     async for doc in cursor:
         doc.pop("_id", None)

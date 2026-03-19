@@ -34,22 +34,13 @@ async def upload_documents(
             mime_type=file.content_type,
             minio_path="",
         )
-        try:
-            minio_path = await minio_service.upload_raw(
-                document_id=record.document_id,
-                filename=file.filename,
-                data=data,
-                content_type=file.content_type,
-            )
-            await document_service.update_minio_path(record.document_id, minio_path)
-        except Exception:
-            # Rollback: supprimer le document en base si l’upload MinIO ou la mise à jour échoue,
-            # pour éviter des documents "fantômes" sans fichier associé
-            await document_service.delete_record(record.document_id, current_user.user_id)
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Impossible de stocker le fichier. Réessayez plus tard.",
-            )
+        minio_path = await minio_service.upload_raw(
+            document_id=record.document_id,
+            filename=file.filename,
+            data=data,
+            content_type=file.content_type,
+        )
+        await document_service.update_minio_path(record.document_id, minio_path)
         await airflow_service.trigger_pipeline(record.document_id)
         responses.append(
             UploadResponse(
@@ -128,12 +119,6 @@ async def download_document(
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document introuvable"
-        )
-    # Éviter de générer une URL signée pour une clé vide (ex: upload MinIO échoué après création du document)
-    if not record.minio_path or not record.minio_path.strip():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Fichier non disponible (upload incomplet ou échec de stockage).",
         )
     url = minio_service.get_presigned_url(record.minio_path)
     return RedirectResponse(url=url)
@@ -225,27 +210,18 @@ async def upload_folder(file: UploadFile = File(...)):
                 continue
             file_data = zf.read(name)
             filename = name.split("/")[-1]
-            # Note: create_record exige user_id ; cet endpoint devra être adapté (ex. current_user) si utilisé
             record = await document_service.create_record(
-                user_id="",  # TODO: passer current_user.user_id quand l’endpoint sera sécurisé
                 filename=filename,
                 mime_type=mime_type,
                 minio_path="",
             )
-            try:
-                minio_path = await minio_service.upload_raw(
-                    document_id=record.document_id,
-                    filename=filename,
-                    data=file_data,
-                    content_type=mime_type,
-                )
-                await document_service.update_minio_path(record.document_id, minio_path)
-            except Exception:
-                await document_service.delete_record(record.document_id, None)
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Impossible de stocker le fichier. Réessayez plus tard.",
-                )
+            minio_path = await minio_service.upload_raw(
+                document_id=record.document_id,
+                filename=filename,
+                data=file_data,
+                content_type=mime_type,
+            )
+            await document_service.update_minio_path(record.document_id, minio_path)
             await airflow_service.trigger_pipeline(record.document_id)
             responses.append(
                 UploadResponse(
