@@ -17,7 +17,7 @@ export default function LoginPage() {
         return <Navigate to="/dashboard" replace />;
     }
 
-    const redirectTo = location.state?.from || '/dashboard';
+    const redirectTo = location.state?.from || '/upload';
 
     async function handleSubmit(event) {
         event.preventDefault();

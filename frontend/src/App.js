@@ -18,22 +18,23 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={authenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />}
+          element={authenticated ? <Navigate to="/upload" replace /> : <LoginPage />}
         />
         <Route
           path="/register"
-          element={authenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
+          element={authenticated ? <Navigate to="/upload" replace /> : <RegisterPage />}
         />
 
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/upload" replace />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/dashboard" element={<ResultsPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/suppliers" element={<SupplierCRMPage />} />
+          <Route path="/crm" element={<SupplierCRMPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to={authenticated ? '/dashboard' : '/login'} replace />} />
+        <Route path="*" element={<Navigate to={authenticated ? '/upload' : '/login'} replace />} />
       </Routes>
     </BrowserRouter>
   );

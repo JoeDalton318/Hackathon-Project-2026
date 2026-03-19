@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, Menu, Sparkles } from 'lucide-react';
 import Sidebar from './Sidebar';
-import { apiBaseUrl, getApiErrorMessage, getHealth } from '../services/api';
+import { apiBaseUrl, getApiErrorMessage, getApiRootStatus, getHealth } from '../services/api';
 import { clearAuthToken } from '../services/auth';
 
 const PAGE_META = {
@@ -19,6 +19,10 @@ const PAGE_META = {
         subtitle: 'Monitor extracted fields, validation signals, and inconsistencies.',
     },
     '/suppliers': {
+        title: 'Supplier CRM',
+        subtitle: 'Review supplier identity, linked documents, and compliance posture.',
+    },
+    '/crm': {
         title: 'Supplier CRM',
         subtitle: 'Review supplier identity, linked documents, and compliance posture.',
     },
@@ -42,7 +46,7 @@ export default function Layout() {
 
         async function checkHealth() {
             try {
-                await getHealth();
+                await Promise.all([getApiRootStatus(), getHealth()]);
                 if (isMounted) {
                     setApiConnected(true);
                     setApiStatusLabel('API Connected');

@@ -28,7 +28,7 @@ export default function RegisterPage() {
             navigate('/login', {
                 replace: true,
                 state: {
-                    from: '/dashboard',
+                    from: '/upload',
                     registered: true,
                     email,
                 },

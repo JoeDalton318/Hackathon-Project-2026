@@ -52,6 +52,18 @@ export function getApiErrorMessage(error, fallbackMessage = 'An unexpected API e
     return fallbackMessage;
 }
 
+export async function getApiRootStatus() {
+    try {
+        const response = await api.get('/');
+        const data = response?.data ?? {};
+        console.log('[API] GET /', data);
+        return data;
+    } catch (error) {
+        console.error('[API] GET / failed', error);
+        throw error;
+    }
+}
+
 export async function getHealth() {
     try {
         const response = await api.get('/health');
