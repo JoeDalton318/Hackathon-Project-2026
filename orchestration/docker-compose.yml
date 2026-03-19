@@ -1,30 +1,61 @@
 version: '3.8'
 
+# ============================================
+# DOCKER COMPOSE - PROJET HACKATHON 2026
+# ============================================
+# IMPORTANT: Le fichier .env doit être à la RACINE du projet
+# Les services chargent le fichier ../.env (relatif à orchestration/)
+# ============================================
+
 services:
-  # PostgreSQL - Base de données principale
+  # PostgreSQL - Base de données pour Airflow uniquement
   postgres:
     image: postgres:15-alpine
     container_name: hackathon_postgres
     environment:
-      POSTGRES_USER: hackathon_user
-      POSTGRES_PASSWORD: hackathon_pass
-      POSTGRES_DB: hackathon_db
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: airflow_user
+      POSTGRES_PASSWORD: airflow_pass
+      POSTGRES_DB: airflow_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../data-architecture/init-scripts:/docker-entrypoint-initdb.d
     networks:
       - hackathon_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB Atlas (Cloud) - Base de données principale fournie par Samuel
+  # Cluster cloud accessible depuis tous les services
+  # Plus besoin de MongoDB local, on utilise mongodb+srv://...
+  # 
+  # Pour dev local uniquement, décommenter ci-dessous:
+  # mongodb:
+  #   image: mongo:7.0
+  #   container_name: hackathon_mongodb
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: hackathon_admin
+  #     MONGO_INITDB_ROOT_PASSWORD: hackathon_admin_pass
+  #     MONGO_INITDB_DATABASE: hackathon_db
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #     - ../data-architecture/init-scripts:/docker-entrypoint-initdb.d
+  #   networks:
+  #     - hackathon_network
 
   # MinIO - Data Lake (compatible S3)
   minio:
     image: minio/minio:latest
     container_name: hackathon_minio
     command: server /data --console-address ":9001"
+    env_file:
+      - ../.env
     environment:
-      MINIO_ROOT_USER: minio_admin
-      MINIO_ROOT_PASSWORD: minio_admin_pass
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -32,28 +63,47 @@ services:
       - minio_data:/data
     networks:
       - hackathon_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Redis - Message Broker pour Celery
-  redis:
-    image: redis:7-alpine
-    container_name: hackathon_redis
-    ports:
-      - "6379:6379"
+  # MinIO Init - Création automatique du bucket datalake
+  minio-init:
+    image: minio/mc:latest
+    container_name: hackathon_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY};
+      mc mb myminio/datalake --ignore-existing;
+      echo '✓ Bucket datalake créé avec succès';
+      exit 0;
+      "
     networks:
       - hackathon_network
 
   # Airflow Init - Initialisation de la base de données
   airflow-init:
-    image: apache/airflow:2.8.1-python3.11
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    image: hackathon-airflow:latest
     container_name: hackathon_airflow_init
+    env_file:
+      - ../.env
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
     environment:
-      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://hackathon_user:hackathon_pass@postgres/hackathon_db
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://hackathon_user:hackathon_pass@postgres/hackathon_db
-      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow_user:airflow_pass@postgres/airflow_db
       AIRFLOW__CORE__FERNET_KEY: ''
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
@@ -79,17 +129,16 @@ services:
 
   # Airflow Webserver
   airflow-webserver:
-    image: apache/airflow:2.8.1-python3.11
+    image: hackathon-airflow:latest
     container_name: hackathon_airflow_webserver
+    env_file:
+      - ../.env
     depends_on:
       - postgres
-      - redis
       - airflow-init
     environment:
-      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://hackathon_user:hackathon_pass@postgres/hackathon_db
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://hackathon_user:hackathon_pass@postgres/hackathon_db
-      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow_user:airflow_pass@postgres/airflow_db
       AIRFLOW__CORE__FERNET_KEY: ''
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
@@ -108,17 +157,16 @@ services:
 
   # Airflow Scheduler
   airflow-scheduler:
-    image: apache/airflow:2.8.1-python3.11
+    image: hackathon-airflow:latest
     container_name: hackathon_airflow_scheduler
+    env_file:
+      - ../.env
     depends_on:
       - postgres
-      - redis
       - airflow-init
     environment:
-      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://hackathon_user:hackathon_pass@postgres/hackathon_db
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://hackathon_user:hackathon_pass@postgres/hackathon_db
-      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow_user:airflow_pass@postgres/airflow_db
       AIRFLOW__CORE__FERNET_KEY: ''
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
@@ -132,44 +180,22 @@ services:
     networks:
       - hackathon_network
 
-  # Airflow Celery Worker
-  airflow-worker:
-    image: apache/airflow:2.8.1-python3.11
-    container_name: hackathon_airflow_worker
-    depends_on:
-      - postgres
-      - redis
-      - airflow-init
-    environment:
-      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://hackathon_user:hackathon_pass@postgres/hackathon_db
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://hackathon_user:hackathon_pass@postgres/hackathon_db
-      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
-      AIRFLOW__CORE__FERNET_KEY: ''
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
-      - ./airflow/plugins:/opt/airflow/plugins
-      - ../nlp-ocr/scripts:/opt/airflow/nlp-ocr
-      - ../validation/scripts:/opt/airflow/validation
-    command: celery worker
-    networks:
-      - hackathon_network
-
   # FastAPI Backend
   backend:
     build:
       context: ../backend
       dockerfile: Dockerfile
     container_name: hackathon_backend
+    env_file:
+      - ../.env
     depends_on:
-      - postgres
       - minio
     environment:
-      DATABASE_URL: postgresql://hackathon_user:hackathon_pass@postgres:5432/hackathon_db
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minio_admin
-      MINIO_SECRET_KEY: minio_admin_pass
+      DATABASE_URL: ${MONGO_URL}
+      MONGO_DATABASE: ${MONGO_DATABASE}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
     ports:
       - "8000:8000"
     volumes:
@@ -197,6 +223,7 @@ services:
 
 volumes:
   postgres_data:
+  # mongodb_data:  # Non utilisé avec MongoDB Atlas
   minio_data:
 
 

@@ -1,24 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Menu, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { Menu, Sparkles } from 'lucide-react';
 import Sidebar from './Sidebar';
-import { apiBaseUrl, getApiErrorMessage, getApiRootStatus, getHealth } from '../services/api';
-import { clearAuthToken } from '../services/auth';
-import {
-    connectWebSocket,
-    disconnectWebSocket,
-    subscribeWebSocket,
-    subscribeWebSocketStatus,
-} from '../services/ws';
 
 const PAGE_META = {
-    '/upload': {
+    '/': {
         title: 'Upload Workspace',
         subtitle: 'Ingest and queue new supplier documents for extraction.',
-    },
-    '/dashboard': {
-        title: 'Documents Dashboard',
-        subtitle: 'Monitor extracted fields, validation signals, and inconsistencies.',
     },
     '/results': {
         title: 'Documents Dashboard',
@@ -28,93 +16,12 @@ const PAGE_META = {
         title: 'Supplier CRM',
         subtitle: 'Review supplier identity, linked documents, and compliance posture.',
     },
-    '/crm': {
-        title: 'Supplier CRM',
-        subtitle: 'Review supplier identity, linked documents, and compliance posture.',
-    },
 };
 
 export default function Layout() {
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
-    const [apiConnected, setApiConnected] = useState(false);
-    const [apiStatusLabel, setApiStatusLabel] = useState('API Down');
-    const [wsConnected, setWsConnected] = useState(false);
-    const [wsStatusLabel, setWsStatusLabel] = useState('WS Offline');
-    const navigate = useNavigate();
     const location = useLocation();
-    const currentMeta = PAGE_META[location.pathname] || PAGE_META['/dashboard'];
-
-    function handleLogout() {
-        disconnectWebSocket();
-        clearAuthToken();
-        navigate('/login', { replace: true });
-    }
-
-    useEffect(() => {
-        let isMounted = true;
-
-        async function checkHealth() {
-            try {
-                await Promise.all([getApiRootStatus(), getHealth()]);
-                if (isMounted) {
-                    setApiConnected(true);
-                    setApiStatusLabel('API Connected');
-                }
-            } catch (error) {
-                if (isMounted) {
-                    setApiConnected(false);
-                    setApiStatusLabel('API Down');
-                    // Keep a clear message in console without breaking UI flow.
-                    console.warn(getApiErrorMessage(error, 'Unable to reach API health endpoint.'), apiBaseUrl);
-                }
-            }
-        }
-
-        checkHealth();
-
-        return () => {
-            isMounted = false;
-        };
-    }, []);
-
-    useEffect(() => {
-        const unsubscribeStatus = subscribeWebSocketStatus((status) => {
-            if (status === 'connected') {
-                setWsConnected(true);
-                setWsStatusLabel('WS Connected');
-                return;
-            }
-
-            if (status === 'connecting') {
-                setWsConnected(false);
-                setWsStatusLabel('WS Connecting');
-                return;
-            }
-
-            if (status === 'error') {
-                setWsConnected(false);
-                setWsStatusLabel('WS Error');
-                return;
-            }
-
-            setWsConnected(false);
-            setWsStatusLabel('WS Offline');
-        });
-
-        const unsubscribeMessages = subscribeWebSocket((message) => {
-            if (message?.type === 'documents_updated') {
-                console.log('[WS] documents_updated', message.payload);
-            }
-        });
-
-        connectWebSocket();
-
-        return () => {
-            unsubscribeStatus();
-            unsubscribeMessages();
-            disconnectWebSocket();
-        };
-    }, []);
+    const currentMeta = PAGE_META[location.pathname] || PAGE_META['/'];
 
     return (
         <div className="min-h-screen overflow-hidden">
@@ -147,28 +54,9 @@ export default function Layout() {
                                 </div>
                             </div>
 
-                            <div className="hidden items-center gap-2 sm:flex">
-                                <div className={`items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-sm sm:flex ${apiConnected
-                                    ? 'border border-success/20 bg-success-soft text-success-text'
-                                    : 'border border-error/20 bg-error-soft text-error-text'
-                                    }`}>
-                                    <Sparkles className="h-3.5 w-3.5" />
-                                    {apiStatusLabel}
-                                </div>
-                                <div className={`items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-sm sm:flex ${wsConnected
-                                    ? 'border border-success/20 bg-success-soft text-success-text'
-                                    : 'border border-error/20 bg-error-soft text-error-text'
-                                    }`}>
-                                    <Sparkles className="h-3.5 w-3.5" />
-                                    {wsStatusLabel}
-                                </div>
-                                <button
-                                    onClick={handleLogout}
-                                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
-                                >
-                                    <LogOut className="h-3.5 w-3.5" />
-                                    Deconnexion
-                                </button>
+                            <div className="hidden items-center gap-2 rounded-full border border-success/20 bg-success-soft px-3 py-2 text-xs font-semibold text-success-text shadow-sm sm:flex">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Operational workspace online
                             </div>
                         </div>
                     </header>

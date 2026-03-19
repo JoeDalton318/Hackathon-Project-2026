@@ -1,0 +1,298 @@
+[
+  {
+    "document_id": "dccf1055-7668-47c7-9a1a-190520b2766b",
+    "file_name": "facture_0000.pdf",
+    "minio_key": "raw/2026/03/18/dccf1055-7668-47c7-9a1a-190520b2766b/facture_0000.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1943,
+    "injected_at": "2026-03-18T18:17:49.186627"
+  },
+  {
+    "document_id": "fff87ad8-65fe-4e5c-97ab-183659e793b6",
+    "file_name": "facture_0000_falsified.pdf",
+    "minio_key": "raw/2026/03/18/fff87ad8-65fe-4e5c-97ab-183659e793b6/facture_0000_falsified.pdf",
+    "bucket": "datalake",
+    "size_bytes": 2022,
+    "injected_at": "2026-03-18T18:17:49.292478"
+  },
+  {
+    "document_id": "ef1df58d-2812-4c74-9038-ed1a1061c353",
+    "file_name": "facture_0001.pdf",
+    "minio_key": "raw/2026/03/18/ef1df58d-2812-4c74-9038-ed1a1061c353/facture_0001.pdf",
+    "bucket": "datalake",
+    "size_bytes": 2042,
+    "injected_at": "2026-03-18T18:17:49.398267"
+  },
+  {
+    "document_id": "f5945014-12c9-4dee-b91f-83903043505b",
+    "file_name": "facture_0002.pdf",
+    "minio_key": "raw/2026/03/18/f5945014-12c9-4dee-b91f-83903043505b/facture_0002.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1931,
+    "injected_at": "2026-03-18T18:17:49.505495"
+  },
+  {
+    "document_id": "b9748847-0d48-4f95-ba6f-f3a9cf97f740",
+    "file_name": "facture_0003.pdf",
+    "minio_key": "raw/2026/03/18/b9748847-0d48-4f95-ba6f-f3a9cf97f740/facture_0003.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1920,
+    "injected_at": "2026-03-18T18:17:49.609493"
+  },
+  {
+    "document_id": "5719aba4-9ff2-4054-9fcb-1be88f238daf",
+    "file_name": "facture_0003_falsified.pdf",
+    "minio_key": "raw/2026/03/18/5719aba4-9ff2-4054-9fcb-1be88f238daf/facture_0003_falsified.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1936,
+    "injected_at": "2026-03-18T18:17:49.726509"
+  },
+  {
+    "document_id": "aa5903c5-ad84-42f1-ba5a-fc645d048a34",
+    "file_name": "facture_0004.pdf",
+    "minio_key": "raw/2026/03/18/aa5903c5-ad84-42f1-ba5a-fc645d048a34/facture_0004.pdf",
+    "bucket": "datalake",
+    "size_bytes": 2067,
+    "injected_at": "2026-03-18T18:17:49.824253"
+  },
+  {
+    "document_id": "e954979b-2fd7-4aa0-a5fd-dca8cd9ac8fe",
+    "file_name": "facture_0005.pdf",
+    "minio_key": "raw/2026/03/18/e954979b-2fd7-4aa0-a5fd-dca8cd9ac8fe/facture_0005.pdf",
+    "bucket": "datalake",
+    "size_bytes": 2063,
+    "injected_at": "2026-03-18T18:17:49.916364"
+  },
+  {
+    "document_id": "ad5bdd51-a09f-41b5-b0c0-4f84ea4d65c4",
+    "file_name": "facture_0006.pdf",
+    "minio_key": "raw/2026/03/18/ad5bdd51-a09f-41b5-b0c0-4f84ea4d65c4/facture_0006.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1951,
+    "injected_at": "2026-03-18T18:17:50.017705"
+  },
+  {
+    "document_id": "4d8151f1-447b-4689-b61d-5f56519b77e7",
+    "file_name": "facture_0006_falsified.pdf",
+    "minio_key": "raw/2026/03/18/4d8151f1-447b-4689-b61d-5f56519b77e7/facture_0006_falsified.pdf",
+    "bucket": "datalake",
+    "size_bytes": 2017,
+    "injected_at": "2026-03-18T18:17:50.127260"
+  },
+  {
+    "document_id": "7fa39307-dde5-4cd5-83bc-15003d7a912f",
+    "file_name": "facture_0007.pdf",
+    "minio_key": "raw/2026/03/18/7fa39307-dde5-4cd5-83bc-15003d7a912f/facture_0007.pdf",
+    "bucket": "datalake",
+    "size_bytes": 2066,
+    "injected_at": "2026-03-18T18:17:50.222456"
+  },
+  {
+    "document_id": "3a9a6aa4-7681-497f-80b9-36d064af1323",
+    "file_name": "facture_0008.pdf",
+    "minio_key": "raw/2026/03/18/3a9a6aa4-7681-497f-80b9-36d064af1323/facture_0008.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1941,
+    "injected_at": "2026-03-18T18:17:50.332886"
+  },
+  {
+    "document_id": "e7b2bcef-bf2e-4c64-84cf-4e6b790ca007",
+    "file_name": "facture_0009.pdf",
+    "minio_key": "raw/2026/03/18/e7b2bcef-bf2e-4c64-84cf-4e6b790ca007/facture_0009.pdf",
+    "bucket": "datalake",
+    "size_bytes": 2061,
+    "injected_at": "2026-03-18T18:17:50.479081"
+  },
+  {
+    "document_id": "7d347344-20de-4a8a-8950-ce1299506b39",
+    "file_name": "facture_0009_falsified.pdf",
+    "minio_key": "raw/2026/03/18/7d347344-20de-4a8a-8950-ce1299506b39/facture_0009_falsified.pdf",
+    "bucket": "datalake",
+    "size_bytes": 2070,
+    "injected_at": "2026-03-18T18:17:50.595060"
+  },
+  {
+    "document_id": "eca72154-1239-4691-a601-62b437e89061",
+    "file_name": "rib_0000.pdf",
+    "minio_key": "raw/2026/03/18/eca72154-1239-4691-a601-62b437e89061/rib_0000.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1328,
+    "injected_at": "2026-03-18T18:17:50.705611"
+  },
+  {
+    "document_id": "5918002d-4310-4edd-82a6-af13639d61d5",
+    "file_name": "rib_0001.pdf",
+    "minio_key": "raw/2026/03/18/5918002d-4310-4edd-82a6-af13639d61d5/rib_0001.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1319,
+    "injected_at": "2026-03-18T18:17:50.810564"
+  },
+  {
+    "document_id": "7248509e-6813-458d-afbc-f41ac630a7ae",
+    "file_name": "rib_0002.pdf",
+    "minio_key": "raw/2026/03/18/7248509e-6813-458d-afbc-f41ac630a7ae/rib_0002.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1341,
+    "injected_at": "2026-03-18T18:17:50.934120"
+  },
+  {
+    "document_id": "03a1ab2d-bed0-4949-9167-80bb2edad760",
+    "file_name": "rib_0003.pdf",
+    "minio_key": "raw/2026/03/18/03a1ab2d-bed0-4949-9167-80bb2edad760/rib_0003.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1322,
+    "injected_at": "2026-03-18T18:17:51.056982"
+  },
+  {
+    "document_id": "a460a202-3df5-40b3-9122-b73678a1ddce",
+    "file_name": "rib_0004.pdf",
+    "minio_key": "raw/2026/03/18/a460a202-3df5-40b3-9122-b73678a1ddce/rib_0004.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1325,
+    "injected_at": "2026-03-18T18:17:51.155894"
+  },
+  {
+    "document_id": "9f85432d-2bad-4883-85f5-3a71be5a4e03",
+    "file_name": "rib_0005.pdf",
+    "minio_key": "raw/2026/03/18/9f85432d-2bad-4883-85f5-3a71be5a4e03/rib_0005.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1322,
+    "injected_at": "2026-03-18T18:17:51.267886"
+  },
+  {
+    "document_id": "d310449a-e25c-43d7-ae37-7be8415c55a0",
+    "file_name": "rib_0006.pdf",
+    "minio_key": "raw/2026/03/18/d310449a-e25c-43d7-ae37-7be8415c55a0/rib_0006.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1326,
+    "injected_at": "2026-03-18T18:17:51.365223"
+  },
+  {
+    "document_id": "357402a0-5815-498b-a4e2-ce46920cb795",
+    "file_name": "rib_0007.pdf",
+    "minio_key": "raw/2026/03/18/357402a0-5815-498b-a4e2-ce46920cb795/rib_0007.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1337,
+    "injected_at": "2026-03-18T18:17:51.476549"
+  },
+  {
+    "document_id": "104cd189-3998-4f78-bd8a-dec3eb858d8b",
+    "file_name": "rib_0008.pdf",
+    "minio_key": "raw/2026/03/18/104cd189-3998-4f78-bd8a-dec3eb858d8b/rib_0008.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1333,
+    "injected_at": "2026-03-18T18:17:51.594763"
+  },
+  {
+    "document_id": "1367a65d-4acd-4ded-9159-47e438bc930f",
+    "file_name": "rib_0009.pdf",
+    "minio_key": "raw/2026/03/18/1367a65d-4acd-4ded-9159-47e438bc930f/rib_0009.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1334,
+    "injected_at": "2026-03-18T18:17:51.713187"
+  },
+  {
+    "document_id": "d4860e79-8aa3-4eae-b249-1ab58291aeec",
+    "file_name": "urssaf_0000_expired.pdf",
+    "minio_key": "raw/2026/03/18/d4860e79-8aa3-4eae-b249-1ab58291aeec/urssaf_0000_expired.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1626,
+    "injected_at": "2026-03-18T18:17:51.806213"
+  },
+  {
+    "document_id": "e3e51450-debb-4439-9917-237288b4f265",
+    "file_name": "urssaf_0000_valid.pdf",
+    "minio_key": "raw/2026/03/18/e3e51450-debb-4439-9917-237288b4f265/urssaf_0000_valid.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1627,
+    "injected_at": "2026-03-18T18:17:51.916396"
+  },
+  {
+    "document_id": "e27347fb-f34f-462a-bbc0-e9b2c68f037e",
+    "file_name": "urssaf_0001_valid.pdf",
+    "minio_key": "raw/2026/03/18/e27347fb-f34f-462a-bbc0-e9b2c68f037e/urssaf_0001_valid.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1619,
+    "injected_at": "2026-03-18T18:17:52.028261"
+  },
+  {
+    "document_id": "1362ce85-9300-4248-bc7b-1100547c1e2d",
+    "file_name": "urssaf_0002_valid.pdf",
+    "minio_key": "raw/2026/03/18/1362ce85-9300-4248-bc7b-1100547c1e2d/urssaf_0002_valid.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1638,
+    "injected_at": "2026-03-18T18:17:52.140814"
+  },
+  {
+    "document_id": "4360d429-b3d6-4dae-9291-a6e781852714",
+    "file_name": "urssaf_0003_valid.pdf",
+    "minio_key": "raw/2026/03/18/4360d429-b3d6-4dae-9291-a6e781852714/urssaf_0003_valid.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1619,
+    "injected_at": "2026-03-18T18:17:52.259159"
+  },
+  {
+    "document_id": "c108fad4-ebf9-47cc-a6f5-5a450675db15",
+    "file_name": "urssaf_0004_expired.pdf",
+    "minio_key": "raw/2026/03/18/c108fad4-ebf9-47cc-a6f5-5a450675db15/urssaf_0004_expired.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1624,
+    "injected_at": "2026-03-18T18:17:52.374708"
+  },
+  {
+    "document_id": "7754efe1-d7bd-4734-b42c-4f4762675852",
+    "file_name": "urssaf_0004_valid.pdf",
+    "minio_key": "raw/2026/03/18/7754efe1-d7bd-4734-b42c-4f4762675852/urssaf_0004_valid.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1622,
+    "injected_at": "2026-03-18T18:17:52.485550"
+  },
+  {
+    "document_id": "a6dc057a-6265-4d72-b411-1a15bc8387af",
+    "file_name": "urssaf_0005_valid.pdf",
+    "minio_key": "raw/2026/03/18/a6dc057a-6265-4d72-b411-1a15bc8387af/urssaf_0005_valid.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1622,
+    "injected_at": "2026-03-18T18:17:52.674961"
+  },
+  {
+    "document_id": "f7f3e53c-f7ec-44fa-b9f8-d34218facf93",
+    "file_name": "urssaf_0006_valid.pdf",
+    "minio_key": "raw/2026/03/18/f7f3e53c-f7ec-44fa-b9f8-d34218facf93/urssaf_0006_valid.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1622,
+    "injected_at": "2026-03-18T18:17:52.744519"
+  },
+  {
+    "document_id": "77fe85ac-7a76-4323-ad1c-b3abf4bc0cda",
+    "file_name": "urssaf_0007_valid.pdf",
+    "minio_key": "raw/2026/03/18/77fe85ac-7a76-4323-ad1c-b3abf4bc0cda/urssaf_0007_valid.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1633,
+    "injected_at": "2026-03-18T18:17:52.809650"
+  },
+  {
+    "document_id": "0c3b10ff-6438-45c9-bed2-a4373333ebb3",
+    "file_name": "urssaf_0008_expired.pdf",
+    "minio_key": "raw/2026/03/18/0c3b10ff-6438-45c9-bed2-a4373333ebb3/urssaf_0008_expired.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1630,
+    "injected_at": "2026-03-18T18:17:52.858939"
+  },
+  {
+    "document_id": "58166eb4-2ab6-4b0c-ba68-88bc9ce27bd4",
+    "file_name": "urssaf_0008_valid.pdf",
+    "minio_key": "raw/2026/03/18/58166eb4-2ab6-4b0c-ba68-88bc9ce27bd4/urssaf_0008_valid.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1628,
+    "injected_at": "2026-03-18T18:17:52.953494"
+  },
+  {
+    "document_id": "79c1665d-e557-4bcb-bcd0-b86039a3b0bb",
+    "file_name": "urssaf_0009_valid.pdf",
+    "minio_key": "raw/2026/03/18/79c1665d-e557-4bcb-bcd0-b86039a3b0bb/urssaf_0009_valid.pdf",
+    "bucket": "datalake",
+    "size_bytes": 1630,
+    "injected_at": "2026-03-18T18:17:53.060119"
+  }
+]

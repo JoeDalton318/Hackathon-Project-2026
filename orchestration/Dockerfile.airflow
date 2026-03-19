@@ -1,0 +1,19 @@
+# Dockerfile personnalisé pour Airflow avec dépendances Python
+FROM apache/airflow:2.8.1-python3.11
+
+# Installation des dépendances système si nécessaire
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Retour à l'utilisateur airflow
+USER airflow
+
+# Copie et installation des dépendances Python
+COPY requirements.txt /requirements.txt
+RUN pip install --no-cache-dir --user -r /requirements.txt
+
+# Les volumes et variables d'environnement sont définis dans docker-compose.yml

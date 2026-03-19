@@ -1,0 +1,50 @@
+{
+  "batch_id": "batch_api_unavailable_001",
+  "documents": [
+    {
+      "document_id": "doc_fact_001",
+      "doc_type": "facture",
+      "fields": {
+        "numero_facture": "FAC-2026-020",
+        "date_facture": "2026-03-10",
+        "date_echeance": "2026-04-10",
+        "fournisseur": {
+          "raison_sociale": "EPITECH",
+          "siret": "42385519600014",
+          "tva_intracommunautaire": "FR69423855196"
+        },
+        "client": {
+          "raison_sociale": "CLIENT XYZ",
+          "siret": "42385519600014"
+        },
+        "amount_ht": 1000.0,
+        "amount_tva": 200.0,
+        "amount_ttc": 1200.0,
+        "confidence": 0.95
+      },
+      "metadata": {}
+    },
+    {
+      "document_id": "doc_att_001",
+      "doc_type": "attestation_siret",
+      "fields": {
+        "supplier_name": "EPITECH",
+        "siret": "42385519600014",
+        "date_emission": "2026-01-01",
+        "date_expiration": "2026-12-31"
+      },
+      "metadata": {}
+    },
+    {
+      "document_id": "doc_rib_001",
+      "doc_type": "rib",
+      "fields": {
+        "supplier_name": "EPITECH",
+        "iban": "FR1420041010050500013M02606",
+        "bic": "AGRIFRPP",
+        "titulaire": "EPITECH"
+      },
+      "metadata": {}
+    }
+  ]
+}
