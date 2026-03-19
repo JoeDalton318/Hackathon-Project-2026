@@ -90,6 +90,31 @@ def store_raw_extraction(doc_id: str, extraction_result) -> Optional[str]:
     }) else None
 
 
+def store_raw(doc_id: str, file_bytes: bytes, file_name: str, extraction_result) -> dict:
+    """Fusion de store_raw_document + store_raw_extraction (branche maria)."""
+    return {
+        "document":   store_raw_document(doc_id, file_bytes, file_name),
+        "extraction": store_raw_extraction(doc_id, extraction_result),
+    }
+
+
+def list_raw_extractions(doc_id: str = None) -> list:
+    """Liste les fichiers extraction_ocr.json dans la zone raw."""
+    c = _get()
+    if not c:
+        return []
+    prefix = f"{ZONE_RAW}/{doc_id}" if doc_id else ZONE_RAW
+    try:
+        return [
+            obj.object_name
+            for obj in c.list_objects(BUCKET, prefix=prefix, recursive=True)
+            if obj.object_name.endswith("extraction_ocr.json")
+        ]
+    except Exception as e:
+        log.error(f"Erreur list_raw_extractions : {e}")
+        return []
+
+
 # ─── CLEAN ─────────────────────────────────────────
 
 def store_clean(
@@ -124,6 +149,22 @@ def store_curated(doc_id: str, result) -> Optional[str]:
         "document-type": result.classification.document_type.value,
         "overall-confidence": str(result.overall_confidence),
     }) else None
+
+
+def list_curated(doc_id: str = None) -> list:
+    """Liste les fichiers dans la zone curated."""
+    c = _get()
+    if not c:
+        return []
+    prefix = f"{ZONE_CURATED}/{doc_id}" if doc_id else ZONE_CURATED
+    try:
+        return [
+            obj.object_name
+            for obj in c.list_objects(BUCKET, prefix=prefix, recursive=True)
+        ]
+    except Exception as e:
+        log.error(f"Erreur list_curated : {e}")
+        return []
 
 
 # ─── API principale ───────────────────────────────
