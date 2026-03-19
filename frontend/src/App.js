@@ -15,20 +15,12 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-
-        <Route
-          element={(
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          )}
-        >
-          <Route path="/" element={<UploadPage />} />
-          <Route path="/results" element={<ResultsPage />} />
-          <Route path="/suppliers" element={<SupplierCRMPage />} />
+        <Route element={<Layout />}>
+          <Route path="/" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
+          <Route path="/results" element={<ProtectedRoute><ResultsPage /></ProtectedRoute>} />
+          <Route path="/suppliers" element={<ProtectedRoute><SupplierCRMPage /></ProtectedRoute>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
-
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

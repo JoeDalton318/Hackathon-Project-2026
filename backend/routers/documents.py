@@ -52,7 +52,6 @@ async def upload_documents(
     return APIResponse(data={"documents": responses})
 
 
-@router.get("")
 @router.get("/")
 async def list_documents(
     status_filter: DocumentStatus | None = Query(default=None, alias="status"),
@@ -69,18 +68,12 @@ async def list_documents(
         skip=skip,
         limit=limit,
     )
-
-    items = [
-        DocumentOut(**record.model_dump()).model_dump()
-        for record in records
-    ]
-
     return APIResponse(
         data=DocumentListOut(
             total=total,
             page=page,
             limit=limit,
-            items=items,
+            items=[DocumentOut(**r.model_dump()) for r in records],
         ).model_dump()
     )
 

@@ -28,13 +28,13 @@ export default function RegisterPage() {
             navigate('/login', {
                 replace: true,
                 state: {
-                    from: '/',
+                    from: '/upload',
                     registered: true,
                     email,
                 },
             });
         } catch (error) {
-            setErrorMessage(getAuthErrorMessage(error, 'Unable to create account.'));
+            setErrorMessage(getAuthErrorMessage(error, 'Impossible de créer le compte. Veuillez réessayer.'));
         } finally {
             setSubmitting(false);
         }

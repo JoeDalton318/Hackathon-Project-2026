@@ -1,21 +1,7 @@
 import axios from 'axios';
 import { clearAuthToken, getAuthToken } from './auth';
 
-function normalizeRootUrl(value) {
-    const trimmed = typeof value === 'string' ? value.trim() : '';
-    if (!trimmed) {
-        return 'http://localhost:8000';
-    }
-
-    return trimmed.replace(/\/+$/, '');
-}
-
-function normalizeApiBaseUrl(rootUrl) {
-    return rootUrl.endsWith('/api') ? rootUrl : `${rootUrl}/api`;
-}
-
-export const apiRootUrl = normalizeRootUrl(process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL);
-export const apiBaseUrl = normalizeApiBaseUrl(apiRootUrl);
+export const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
     baseURL: apiBaseUrl,
@@ -51,18 +37,15 @@ api.interceptors.response.use(
     }
 );
 
-export function getApiErrorMessage(error, fallbackMessage = 'An unexpected API error occurred.') {
+export function getApiErrorMessage(error, fallbackMessage = 'Une erreur inattendue s\'est produite.') {
     if (axios.isAxiosError(error)) {
-        return (
-            error.response?.data?.message ||
-            error.response?.data?.detail ||
-            error.message ||
-            fallbackMessage
-        );
-    }
-
-    if (error instanceof Error) {
-        return error.message || fallbackMessage;
+        if (error.code === 'ERR_NETWORK') {
+            return 'Le serveur est momentanément indisponible. Veuillez réessayer dans quelques instants.';
+        }
+        if (error.code === 'ECONNABORTED') {
+            return 'Le serveur met trop de temps à répondre. Veuillez réessayer.';
+        }
+        return error.response?.data?.message || error.response?.data?.detail || fallbackMessage;
     }
 
     return fallbackMessage;
@@ -121,7 +104,7 @@ export async function uploadDocuments(files) {
     });
 
     try {
-        const response = await api.post('/documents/upload', formData, {
+        const response = await api.post('/upload', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

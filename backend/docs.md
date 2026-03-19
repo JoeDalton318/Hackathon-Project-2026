@@ -170,8 +170,8 @@ Si une variable obligatoire est manquante au démarrage, **l'app refusera de dé
 | `MONGO_URL` | URL de connexion MongoDB | obligatoire |
 | `MONGO_DB` | Nom de la base de données | `hackathon` |
 | `MINIO_ENDPOINT` | Adresse du serveur MinIO | obligatoire |
-| `MINIO_ACCESS_KEY` | Clé d'accès MinIO | obligatoire |
-| `MINIO_SECRET_KEY` | Clé secrète MinIO | obligatoire |
+| `MINIO_ROOT_USER` | Clé d'accès MinIO | obligatoire |
+| `MINIO_ROOT_PASSWORD` | Clé secrète MinIO | obligatoire |
 | `MINIO_SECURE` | HTTPS pour MinIO | `false` |
 | `MINIO_BUCKET_RAW` | Nom du bucket brut | `raw` |
 | `MINIO_BUCKET_CLEAN` | Nom du bucket OCR | `clean` |
@@ -180,7 +180,6 @@ Si une variable obligatoire est manquante au démarrage, **l'app refusera de dé
 | `AIRFLOW_DAG_ID` | Identifiant du DAG | `doc_pipeline` |
 | `AIRFLOW_USERNAME` | Login Airflow | `airflow` |
 | `AIRFLOW_PASSWORD` | Mot de passe Airflow | `airflow` |
-| `INTERNAL_API_SECRET` | Secret partagé avec Airflow | obligatoire |
 | `JWT_SECRET_KEY` | Clé de signature des tokens JWT | obligatoire |
 | `JWT_ALGORITHM` | Algorithme JWT | `HS256` |
 | `JWT_EXPIRE_MINUTES` | Durée de vie du token | `480` |
@@ -199,18 +198,9 @@ Tous les logs apparaissent dans la console avec horodatage, niveau et message.
 
 ---
 
-### `core/security.py` — Protection endpoint interne
+### `core/security.py` — Utilitaires de sécurité
 
-Le callback Airflow (`POST /api/internal/pipeline/result`) est un endpoint
-que seul Airflow doit pouvoir appeler. Ce fichier expose une fonction de vérification
-qui est exécutée automatiquement avant chaque appel à cet endpoint.
-
-Airflow doit inclure le header suivant dans sa requête :
-```
-X-Internal-Secret: <valeur de INTERNAL_API_SECRET dans le .env>
-```
-
-Si le header est absent ou incorrect → `403 Forbidden`, la requête est bloquée.
+Fichier de configuration pour les utilitaires de sécurité (actuellement vide, peut être étendu pour de futures fonctionnalités).
 
 ---
 
@@ -587,12 +577,11 @@ Tous les endpoints sont préfixés `/api`.
 
 | Méthode | Endpoint | Auth | Description |
 |---|---|---|---|
-| POST | `/api/internal/pipeline/result` | Secret | Réception résultats Airflow |
+| POST | `/api/internal/pipeline/result` | Aucun | Réception résultats Airflow |
 
 Cet endpoint est **exclusivement pour Airflow**. Le front ne l'appelle jamais.
 
 ```
-Header: X-Internal-Secret: <INTERNAL_API_SECRET>
 Body: PipelineCallbackPayload
 ```
 
@@ -678,18 +667,15 @@ Body: { "conf": { "document_id": "uuid" } }
 **Ce qu'Airflow doit faire pour l'API :**
 ```
 POST /api/internal/pipeline/result
-Header: X-Internal-Secret: <valeur partagée en privé>
 Body: {
   "document_id": "uuid",
   "status": "done",
   "document_type": "facture",
   "extracted_data": { ... },
-  "anomalies": [ ... ]
+  "alerts": [ ... ],
+  "signals": [ ... ]
 }
 ```
-
-Le secret `INTERNAL_API_SECRET` doit être partagé entre Samuel et l'équipe Airflow
-en privé — pas dans le repo Git.
 
 ---
 
@@ -754,7 +740,7 @@ Les noms des buckets doivent correspondre aux variables du `.env` :
 | Conformité fournisseur | `GET /api/compliance/dossier/{siret}` | Frontend Conformité |
 | Health check | `GET /health` | DevOps |
 | Format réponse standard | Tous les endpoints | Frontend |
-| Protection endpoint interne | Header X-Internal-Secret | Airflow |
+| Endpoint callback Airflow | POST /api/internal/pipeline/result | Airflow |
 
 ---
 

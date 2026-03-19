@@ -17,7 +17,7 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import { getApiErrorMessage } from '../services/apiClient';
-import { processDocuments, uploadDocuments } from '../services/documentService';
+import { uploadDocuments } from '../services/documentService';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Card from '../components/ui/Card';
@@ -151,25 +151,15 @@ export default function UploadPage() {
         setErrorMessage('');
 
         try {
-            setStatusMessage('Uploading documents...');
-            const uploadResponse = await uploadDocuments(files);
-            const uploadedIds = Array.isArray(uploadResponse)
-                ? uploadResponse.map((item) => item?.document_id || item?.id).filter(Boolean)
-                : [];
-
-            if (uploadedIds.length === 0) {
-                throw new Error('Upload completed but no document ID was returned by backend.');
-            }
-
-            setStatusMessage('Starting document processing...');
-            await processDocuments({ documentIds: uploadedIds });
-
+            setStatusMessage('Envoi des documents en cours...');
+            await uploadDocuments(files);
+            setStatusMessage('Documents envoyés. Analyse lancée...');
+            setProcessing(false);
             setDone(true);
-            setTimeout(() => navigate('/results'), 1400);
+            setTimeout(() => navigate('/results'), 2500);
         } catch (error) {
-            setErrorMessage(getApiErrorMessage(error, 'Unable to process documents with backend API.'));
+            setErrorMessage(getApiErrorMessage(error, "L'envoi des documents a échoué. Veuillez vérifier votre connexion et réessayer."));
             setStatusMessage('');
-        } finally {
             setProcessing(false);
         }
     };
@@ -181,12 +171,12 @@ export default function UploadPage() {
                     <CheckCircle className="w-10 h-10 text-emerald-500" />
                 </div>
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Processing Complete!</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">Documents envoyés !</h2>
                     <p className="text-gray-500 mt-1">
-                        {files.length} document{files.length > 1 ? 's' : ''} analysed successfully.
+                        {files.length} document{files.length > 1 ? 's' : ''} en cours d'analyse par le pipeline.
                     </p>
                 </div>
-                <p className="text-sm text-sky-500 animate-pulse">Redirecting to results…</p>
+                <p className="text-sm text-sky-500 animate-pulse">Redirection vers les résultats...</p>
             </div>
         );
     }

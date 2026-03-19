@@ -210,30 +210,22 @@ export default function SupplierCRMPage() {
 
             const errorMessages = [];
 
-            if (suppliersResult.status === 'fulfilled' && Array.isArray(suppliersResult.value)) {
+            if (suppliersResult.status === 'fulfilled' && Array.isArray(suppliersResult.value) && suppliersResult.value.length > 0) {
                 setSuppliers(suppliersResult.value);
-                if (suppliersResult.value.length === 0) {
-                    errorMessages.push('No suppliers found yet for this account.');
-                }
             } else {
                 setSuppliers([]);
-                const supplierReason = suppliersResult.status === 'rejected'
-                    ? getApiErrorMessage(suppliersResult.reason, 'Unable to load suppliers.')
-                    : 'Suppliers API returned invalid data.';
-                errorMessages.push(supplierReason);
+                if (suppliersResult.status === 'rejected') {
+                    errorMessages.push(getApiErrorMessage(suppliersResult.reason, 'Impossible de charger la liste des fournisseurs.'));
+                }
             }
 
-            if (documentsResult.status === 'fulfilled' && Array.isArray(documentsResult.value)) {
+            if (documentsResult.status === 'fulfilled' && Array.isArray(documentsResult.value) && documentsResult.value.length > 0) {
                 setDocuments(documentsResult.value);
-                if (documentsResult.value.length === 0) {
-                    errorMessages.push('No documents found yet for this account.');
-                }
             } else {
                 setDocuments([]);
-                const documentReason = documentsResult.status === 'rejected'
-                    ? getApiErrorMessage(documentsResult.reason, 'Unable to load documents.')
-                    : 'Documents API returned invalid data.';
-                errorMessages.push(documentReason);
+                if (documentsResult.status === 'rejected') {
+                    errorMessages.push(getApiErrorMessage(documentsResult.reason, 'Impossible de charger les documents.'));
+                }
             }
 
             setLoadError(errorMessages.join(' '));

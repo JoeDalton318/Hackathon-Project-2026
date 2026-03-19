@@ -135,8 +135,8 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 | Variable d’environnement | Rôle |
 |--------------------------|------|
 | `MINIO_ENDPOINT` | Ex. `localhost:9000` (ou host du serveur MinIO partagé). |
-| `MINIO_ACCESS_KEY` | Identifiant (ex. `minioadmin`). |
-| `MINIO_SECRET_KEY` | Secret (ex. `minioadmin123`). |
+| `MINIO_ROOT_USER` | Identifiant (ex. `minioadmin`). |
+| `MINIO_ROOT_PASSWORD` | Secret (ex. `minioadmin123`). |
 | `MINIO_SECURE` | `false` en local, `true` si HTTPS. |
 | `MINIO_BUCKET` | **Un seul bucket** : `datalake`. |
 | `MINIO_RAW_PREFIX` | Préfixe Raw : `raw/` |
@@ -146,8 +146,8 @@ La base de données utilisée est **MongoDB Atlas** (cloud).
 **Exemple de `.env` (référence projet) :**
 ```env
 MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin123
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin123
 MINIO_SECURE=false
 MINIO_BUCKET=datalake
 MINIO_RAW_PREFIX=raw/

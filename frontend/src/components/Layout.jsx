@@ -24,8 +24,8 @@ export default function Layout() {
     const currentMeta = PAGE_META[location.pathname] || PAGE_META['/'];
 
     return (
-        <div className="min-h-screen overflow-hidden">
-            <div className="relative flex min-h-screen">
+        <div className="h-screen overflow-hidden">
+            <div className="relative flex h-full">
                 <div
                     onClick={() => setMobileNavOpen(false)}
                     className={`fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-sm transition lg:hidden ${mobileNavOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}

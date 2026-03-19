@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Upload, FileText, Users, Brain, BarChart3, X, Sparkles, LogOut } from 'lucide-react';
-import { logout } from '../services/auth';
-import { disconnectWebSocket } from '../services/ws';
+import { getCurrentUser, logout } from '../services/auth';
 
 export const navItems = [
     { to: '/', label: 'Upload', icon: Upload, end: true },
@@ -12,17 +10,12 @@ export const navItems = [
 
 export default function Sidebar({ className = '', onNavigate, onClose }) {
     const navigate = useNavigate();
-    const [isDisconnecting, setIsDisconnecting] = useState(false);
+    const user = getCurrentUser();
+    const displayName = user?.nom || '';
+    const initial = displayName ? displayName.charAt(0).toUpperCase() : '';
 
-    async function handleDisconnect() {
-        if (isDisconnecting) {
-            return;
-        }
-
-        setIsDisconnecting(true);
-        await logout();
-        disconnectWebSocket();
-        setIsDisconnecting(false);
+    function handleLogout() {
+        logout();
         navigate('/login', { replace: true });
     }
 
@@ -87,17 +80,26 @@ export default function Sidebar({ className = '', onNavigate, onClose }) {
                 </div>
             </nav>
 
-            <div className="border-t border-slate-800 px-4 py-4">
+            <div className="border-t border-slate-800 px-4 py-4 space-y-3">
+                {displayName && (
+                    <div className="flex items-center gap-3 px-3 py-2">
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                            {initial}
+                        </div>
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-white">{displayName}</p>
+                            {user?.email && <p className="truncate text-xs text-slate-400">{user.email}</p>}
+                        </div>
+                    </div>
+                )}
                 <button
-                    onClick={handleDisconnect}
-                    disabled={isDisconnecting}
-                    className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2.5 text-sm font-medium text-slate-200 transition hover:border-red-400/50 hover:bg-red-500/10 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-all duration-150 hover:bg-red-950/50 hover:text-red-400"
                 >
-                    <LogOut className="h-4 w-4" />
-                    {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
+                    <LogOut className="h-4 w-4 flex-shrink-0" />
+                    Sign out
                 </button>
-
-                <div className="flex items-center gap-2 text-slate-500">
+                <div className="flex items-center gap-2 text-slate-600 px-3">
                     <BarChart3 className="h-3.5 w-3.5" />
                     <span className="text-xs">Hackathon 2026 - v1.0</span>
                 </div>

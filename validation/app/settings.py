@@ -19,8 +19,8 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
 @dataclass(frozen=True)
 class Settings:
     minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "")
-    minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "")
+    minio_access_key: str = os.getenv("MINIO_ROOT_USER", "")
+    minio_secret_key: str = os.getenv("MINIO_ROOT_PASSWORD", "")
     minio_secure: bool = _as_bool(os.getenv("MINIO_SECURE"), False)
     minio_bucket: str = os.getenv("MINIO_BUCKET", "datalake")
 

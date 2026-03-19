@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, AlertCircle, FileSearch, ShieldAlert, ShieldCheck, XCircle, Sparkles } from 'lucide-react';
+import { Search, AlertCircle, FileSearch, Loader2, ShieldAlert, ShieldCheck, XCircle, Sparkles } from 'lucide-react';
 import { getApiErrorMessage } from '../services/apiClient';
 import { getDocuments } from '../services/documentService';
 import Button from '../components/ui/Button';
@@ -103,16 +103,13 @@ export default function ResultsPage() {
                 }
 
                 setDocuments(Array.isArray(data) ? data : []);
-                if (!Array.isArray(data) || data.length === 0) {
-                    setLoadError('Aucun document trouve en base pour ce compte.');
-                }
             } catch (error) {
                 if (!isActive) {
                     return;
                 }
 
                 setDocuments([]);
-                setLoadError(getApiErrorMessage(error, 'Unable to load documents from backend API.'));
+                setLoadError(getApiErrorMessage(error, 'Impossible de charger les documents. Veuillez réessayer.'));
             } finally {
                 if (isActive) {
                     setLoading(false);
@@ -126,6 +123,25 @@ export default function ResultsPage() {
             isActive = false;
         };
     }, []);
+
+    const hasPending = !loading && documents.length > 0 && documents.some((d) => d.status === 'pending');
+
+    useEffect(() => {
+        if (!hasPending) return;
+
+        const intervalId = setInterval(async () => {
+            try {
+                const data = await getDocuments();
+                if (Array.isArray(data)) {
+                    setDocuments(data);
+                }
+            } catch {
+                // Ignorer les erreurs de rafraîchissement automatique
+            }
+        }, 5000);
+
+        return () => clearInterval(intervalId);
+    }, [hasPending]);
 
     const filtered = documents.filter((document) => {
         const query = search.toLowerCase();
@@ -161,6 +177,13 @@ export default function ResultsPage() {
             {loadError && (
                 <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                     {loadError}
+                </div>
+            )}
+
+            {hasPending && (
+                <div className="mb-6 flex items-center gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+                    <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
+                    <span>Vos documents sont en cours d'analyse. Les résultats s'afficheront automatiquement une fois le traitement terminé.</span>
                 </div>
             )}
 
@@ -282,20 +305,14 @@ export default function ResultsPage() {
                                     <TableCell>
                                         {(document.inconsistencies || []).length > 0 ? (
                                             <div className="flex flex-wrap gap-2">
-                                                {(document.inconsistencies || []).map((item) => (
-                                                    <Badge key={item} variant="error">{item}</Badge>
+                                                {(document.inconsistencies || []).map((item, idx) => (
+                                                    <Badge key={idx} variant="error">
+                                                        {typeof item === 'string' ? item : item.message || item.rule || 'Anomalie'}
+                                                    </Badge>
                                                 ))}
-                                                {document.amountSource && (
-                                                    <span className="text-[11px] text-gray-500">Amount source: {document.amountSource}</span>
-                                                )}
                                             </div>
                                         ) : (
-                                            <div className="flex flex-col gap-1">
-                                                <Badge variant="success">No issue detected</Badge>
-                                                {document.amountSource && (
-                                                    <span className="text-[11px] text-gray-500">Amount source: {document.amountSource}</span>
-                                                )}
-                                            </div>
+                                            <Badge variant="success">Aucune anomalie</Badge>
                                         )}
                                     </TableCell>
                                 </TableRow>

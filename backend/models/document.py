@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from enum import StrEnum, auto
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class DocumentStatus(StrEnum):
@@ -36,3 +36,11 @@ class DocumentRecord(BaseModel):
     signals: list[dict] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_validator("document_type", mode="before")
+    @classmethod
+    def normalize_document_type(cls, v: object) -> object:
+        _legacy_map = {"unknown": "inconnu"}
+        if isinstance(v, str):
+            return _legacy_map.get(v, v)
+        return v

@@ -27,12 +27,12 @@ export default function LoginPage() {
         try {
             const response = await login(email, password);
             if (!response?.token) {
-                setErrorMessage('Login succeeded but token was not returned by backend.');
+                setErrorMessage('La connexion a rencontré un problème technique. Veuillez réessayer.');
                 return;
             }
             navigate(redirectTo, { replace: true });
         } catch (error) {
-            setErrorMessage(getAuthErrorMessage(error, 'Invalid credentials or server unavailable.'));
+            setErrorMessage(getAuthErrorMessage(error, 'Identifiants incorrects. Vérifiez votre email et mot de passe.'));
         } finally {
             setSubmitting(false);
         }
@@ -51,7 +51,7 @@ export default function LoginPage() {
                     {location.state?.registered && (
                         <div className="mb-4 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
                             <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                            <span>Account created successfully. Please sign in.</span>
+                            <span>Compte créé avec succès. Veuillez vous connecter.</span>
                         </div>
                     )}
 

@@ -16,6 +16,7 @@ class DocumentOut(BaseModel):
     original_filename: str
     status: DocumentStatus
     document_type: DocumentType
+    decision: str | None = None
     extracted_data: dict
     anomalies: list[dict]
     created_at: datetime
