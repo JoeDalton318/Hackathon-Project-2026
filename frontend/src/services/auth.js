@@ -68,6 +68,30 @@ export function clearAuthToken() {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
+export async function logout() {
+    const token = getAuthToken();
+
+    try {
+        if (token) {
+            await axios.post(
+                `${AUTH_API_BASE_URL}/auth/logout`,
+                {},
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+        }
+    } catch (error) {
+        // Local logout still succeeds even if backend logout endpoint fails.
+        console.warn('[AUTH] POST /auth/logout failed', error);
+    } finally {
+        clearAuthToken();
+    }
+}
+
 export function isAuthenticated() {
     return Boolean(getAuthToken());
 }
